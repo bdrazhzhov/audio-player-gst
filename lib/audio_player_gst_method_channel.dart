@@ -29,4 +29,7 @@ class MethodChannelAudioPlayerGst extends AudioPlayerGstPlatform {
 
   @override
   Future<void> seek(Duration position) => methodChannel.invokeMethod('seek', position.inMilliseconds);
+
+  @override
+  Future<void> setRate(double rate) => methodChannel.invokeMethod('setRate', rate);
 }

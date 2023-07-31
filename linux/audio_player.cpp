@@ -11,15 +11,11 @@ AudioPlayer::AudioPlayer(FlEventChannel* eventChannel) : _eventChannel(eventChan
 {
     gst_init(nullptr, nullptr);
 
-//    _pipeline = gst_parse_launch(R"(playbin uri=file:///media/Media/Music/Avril\ Lavigne/Let\ Go/03.\ Sk8ter\ Boi.mp3)", nullptr);
-//    _pipeline = gst_parse_launch(R"(playbin uri=https://drive.google.com/uc?id=1LfoEzQ55EgQZHzxm-C6Z50eThKmdrHDl&export=download)", nullptr);
     _playbin = gst_element_factory_make("playbin", "playbin");
     guint flags;
     g_object_get (_playbin, "flags", &flags, NULL);
     flags |= GST_PLAY_FLAG_DOWNLOAD;
     g_object_set (_playbin, "flags", flags, NULL);
-//    g_object_set (_playbin, "ring-buffer-max-size", (guint64)20'000'000, NULL);
-//    g_object_set (_playbin, "buffer-size", (guint64)20'000'000, NULL);
 
     _bus = gst_element_get_bus(_playbin);
     gst_bus_add_watch(_bus, (GstBusFunc)AudioPlayer::_onBusMessage, this);
@@ -65,16 +61,17 @@ void AudioPlayer::setVolume(double value)
 
 void AudioPlayer::setUrl(const char* urlString)
 {
-    std::cout << "setUrl: " << urlString << std::endl;
-
     gst_element_set_state(_playbin, GST_STATE_NULL);
     g_object_set(GST_OBJECT(_playbin), "uri", urlString, nullptr);
-    if (_playbin->current_state != GST_STATE_READY) {
-        GstStateChangeReturn ret = gst_element_set_state(_playbin, GST_STATE_READY);
-        if (ret == GST_STATE_CHANGE_FAILURE) {
-            throw "Unable to set the pipeline to GST_STATE_READY.";
-        }
+
+    if (_playbin->current_state == GST_STATE_READY) return;
+
+    GstStateChangeReturn ret = gst_element_set_state(_playbin, GST_STATE_READY);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        throw "Unable to set the pipeline to GST_STATE_READY.";
     }
+
+    _isBuffered = false;
 }
 
 gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioPlayer* data)
@@ -102,6 +99,8 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             GstState old_state, new_state;
             gst_message_parse_state_changed(message, &old_state, &new_state, nullptr);
 
+//            std::cout << "State changed from " << states[old_state] << " to " << states[new_state] << std::endl;
+
             if(data->_eventChannel)
             {
                 g_autoptr(FlValue) map = fl_value_new_map();
@@ -119,7 +118,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
                 }
                 else
                 {
-                    g_printerr("Seeking query failed.");
+                    g_printerr("Seeking query failed.\n");
                 }
                 gst_query_unref(query);
             }
@@ -127,42 +126,57 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             break;
         }
         case GST_MESSAGE_EOS:
-//            data->OnPlaybackEnded();
+        {
             std::cout << "Playback ended" << std::endl;
+            if(!data->_eventChannel) break;
+
+            g_autoptr(FlValue) map = fl_value_new_map();
+            fl_value_set_string(map, "event", fl_value_new_string("audio.completed"));
+            fl_value_set_string(map, "value", fl_value_new_bool(true));
+            fl_event_channel_send(data->_eventChannel, map, nullptr, nullptr);
+
             break;
+        }
         case GST_MESSAGE_DURATION_CHANGED:
         {
             const gint64 duration = data->duration();
             std::cout << "[Duration update]: " << duration << std::endl;
-            if(data->_eventChannel)
-            {
-                g_autoptr(FlValue) map = fl_value_new_map();
-                fl_value_set_string(map, "event", fl_value_new_string("audio.duration"));
-                fl_value_set_string(map, "value", fl_value_new_int(duration));
-                fl_event_channel_send(data->_eventChannel, map, nullptr, nullptr);
-            }
+
+            if(!data->_eventChannel) break;
+
+            g_autoptr(FlValue) map = fl_value_new_map();
+            fl_value_set_string(map, "event", fl_value_new_string("audio.duration"));
+            fl_value_set_string(map, "value", fl_value_new_int(duration / 1'000'000));
+            fl_event_channel_send(data->_eventChannel, map, nullptr, nullptr);
+
             break;
         }
-//        case GST_MESSAGE_BUFFERING:
-//        {
-//            /* If the stream is live, we do not care about buffering. */
-//            if (data->_isLive) break;
-//
-//            gst_message_parse_buffering (message, &data->_bufferingLevel);
-//            g_print ("Buffering (%3d%%)\r", data->_bufferingLevel);
-//
-//            /* Wait until buffering is complete before start/resume playing */
+        case GST_MESSAGE_BUFFERING:
+        {
+            data->_isBuffered = true;
+            /* If the stream is live, we do not care about buffering. */
+            if (data->_isLive) break;
+
+            gst_message_parse_buffering(message, &data->_bufferingLevel);
+            g_print("Buffering (%3d%%)\r", data->_bufferingLevel);
+
+            /* Wait until buffering is complete before start/resume playing */
 //            if (data->_bufferingLevel < 100)
 //                gst_element_set_state (data->_playbin, GST_STATE_PAUSED);
 //            else
 //                gst_element_set_state (data->_playbin, GST_STATE_PLAYING);
 //            break;
-//        }
+        }
         case GST_MESSAGE_CLOCK_LOST:
             /* Get a new clock */
             gst_element_set_state (data->_playbin, GST_STATE_PAUSED);
             gst_element_set_state (data->_playbin, GST_STATE_PLAYING);
             break;
+        case GST_MESSAGE_ELEMENT:
+        {
+            g_message("Message element: %s", gst_structure_get_name(gst_message_get_structure(message)));
+            break;
+        }
         default:
             // For more GstMessage types see:
             // https://gstreamer.freedesktop.org/documentation/gstreamer/gstmessage.html?gi-language=c#enumerations
@@ -224,7 +238,7 @@ gint64 AudioPlayer::duration()
         std::cerr << "Could not query current duration." << std::endl;
         return 0;
     }
-    return duration / 1000000;
+    return duration;
 }
 
 gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
@@ -234,19 +248,18 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
     GstState playbinState;
     gst_element_get_state(data->_playbin, &playbinState, nullptr, GST_CLOCK_TIME_NONE);
     if (playbinState == GST_STATE_PLAYING) {
-        gint64 position = 0;
-        if (!gst_element_query_position(data->_playbin, GST_FORMAT_TIME, &position)) {
+        if (!gst_element_query_position(data->_playbin, GST_FORMAT_TIME, &data->_position)) {
             std::cerr << "Could not query current position." << std::endl;
             return 0;
         }
 
         g_autoptr(FlValue) map = fl_value_new_map();
         fl_value_set_string(map, "event", fl_value_new_string("audio.position"));
-        fl_value_set_string(map, "value", fl_value_new_int(position));
+        fl_value_set_string(map, "value", fl_value_new_int(data->_position));
         fl_event_channel_send(data->_eventChannel, map, nullptr, nullptr);
     }
 
-    if(data->_downloadProgress < 1'000'000) // less than 100%
+    if(data->_isBuffered && data->_downloadProgress < 1'000'000) // less than 100%
     {
         GstQuery* query = gst_query_new_buffering(GST_FORMAT_PERCENT);
         gboolean result = gst_element_query(data->_playbin, query);
@@ -258,7 +271,7 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
             gint64 start;
             gst_query_parse_nth_buffering_range (query, 0, &start, &data->_downloadProgress);
             double percent = static_cast<double>(data->_downloadProgress) / 1'000'000.0;
-            std::cout << "Downloading progress: " << percent * 100.0 << "%" << std::endl;
+            g_message("Downloading progress: %f%%\n", percent * 100.0);
 
             if(data->_eventChannel)
             {
@@ -273,10 +286,55 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
     return true;
 }
 
-void AudioPlayer::seek(gint64 position)
+/// Changes position and speed of the playback
+/// \param position in nanoseconds
+/// \param rate 1.0 - normal speed, 2.0 double speed, 0.5 - half speed, positive values are forward, negative ones are backward
+void AudioPlayer::_seek(gint64 position, gdouble rate)
 {
     if(!_playbin || !_seekEnabled) return;
 
-    gst_element_seek_simple(_playbin, GST_FORMAT_TIME,
-                            static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT), position * GST_MSECOND);
+    gboolean result;
+
+    if(_rate > 0)
+    {
+        result = gst_element_seek(_playbin,
+                                  rate,
+                                  GST_FORMAT_TIME,
+                                  static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE),
+                                  GST_SEEK_TYPE_SET,
+                                  position,
+                                  GST_SEEK_TYPE_SET,
+                                  duration());
+
+    }
+    else
+    {
+        result = gst_element_seek(_playbin,
+                                  rate,
+                                  GST_FORMAT_TIME,
+                                  static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE),
+                                  GST_SEEK_TYPE_SET,
+                                  0,
+                                  GST_SEEK_TYPE_SET,
+                                  position);
+    }
+
+    if(result) _rate = rate;
+}
+
+///
+/// \param position in milliseconds
+void AudioPlayer::seek(gint64 position)
+{
+    gint64 newPosition = position * GST_MSECOND;
+    if(newPosition == _position) return;
+
+    _seek(newPosition, _rate);
+}
+
+void AudioPlayer::setRate(double rate)
+{
+    if(rate == _rate) return;
+
+    _seek(_position, rate);
 }

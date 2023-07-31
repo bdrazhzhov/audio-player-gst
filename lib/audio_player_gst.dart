@@ -30,6 +30,8 @@ class AudioPlayerGst {
         case 'audio.buffering':
           final value = map['value'] as double;
           return BufferingEvent(value);
+        case 'audio.completed':
+          return PlayingCompletedEvent();
       }
 
       return UnknownEvent();
@@ -42,4 +44,5 @@ class AudioPlayerGst {
   Future<void> setVolume(double value) => AudioPlayerGstPlatform.instance.setVolume(value);
   Future<void> setUrl(String url) => AudioPlayerGstPlatform.instance.setUrl(url);
   Future<void> seek(Duration position) => AudioPlayerGstPlatform.instance.seek(position);
+  Future<void> setRate(double rate) => AudioPlayerGstPlatform.instance.setRate(rate);
 }

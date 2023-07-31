@@ -43,3 +43,8 @@ class BufferingEvent extends EventBase {
   @override
   List<Object?> get props => [percent];
 }
+
+class PlayingCompletedEvent extends EventBase {
+  @override
+  List<Object?> get props => [];
+}

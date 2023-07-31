@@ -46,4 +46,8 @@ abstract class AudioPlayerGstPlatform extends PlatformInterface {
   Future<void> seek(Duration position) {
     throw UnimplementedError('seek() has not been implemented.');
   }
+
+  Future<void> setRate(double rate) {
+    throw UnimplementedError('setRate() has not been implemented.');
+  }
 }

@@ -70,6 +70,12 @@ static void audio_player_gst_plugin_handle_method_call(
 
         response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
     }
+    else if(strcmp(method, "setRate") == 0)
+    {
+        double rate = args == nullptr ? 1.0 : fl_value_get_float(args);
+        player->setRate(rate);
+        response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+    }
     else
     {
         response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());

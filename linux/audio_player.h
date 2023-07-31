@@ -11,13 +11,17 @@ class AudioPlayer
     GstElement* _playbin = nullptr;
     GstBus* _bus = nullptr;
     guint _refreshTimer{};
+    bool _isBuffered = false;
+    gint _bufferingLevel{};
     bool _isLive = false;
-//    gint _bufferingLevel{};
     gint64 _downloadProgress{};
     gboolean _seekEnabled = false;
+    gint64 _position{};
+    gdouble _rate = 1.0;
 
     static gboolean _onBusMessage(GstBus *bus, GstMessage *message, AudioPlayer *data);
     static gboolean _onRefreshTick(AudioPlayer *data);
+    void _seek(gint64 position, gdouble rate);
 
 public:
     explicit AudioPlayer(FlEventChannel* eventChannel);
@@ -28,5 +32,6 @@ public:
     void setVolume(double value);
     void setUrl(const char* urlString);
     void seek(gint64 position);
+    void setRate(double rate);
     gint64 duration();
 };
