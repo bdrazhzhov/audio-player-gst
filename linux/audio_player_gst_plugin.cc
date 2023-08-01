@@ -2,12 +2,12 @@
 
 #include <flutter_linux/flutter_linux.h>
 #include <gtk/gtk.h>
-#include <sys/utsname.h>
 
 #include <cstring>
 
 #include "audio_player_gst_plugin_private.h"
 #include "audio_player.h"
+#include "audio_player_exception.h"
 
 #define AUDIO_PLAYER_GST_PLUGIN(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), audio_player_gst_plugin_get_type(), \
@@ -34,63 +34,55 @@ static void audio_player_gst_plugin_handle_method_call(
 
     printf("Method name: %s\n", method);
 
-    if(strcmp(method, "getPlatformVersion") == 0)
-    {
-        response = get_platform_version();
-    }
-    else if(strcmp(method, "setUrl") == 0)
-    {
-        const gchar* url = fl_value_get_string(args);
-        player->setUrl(url);
-        response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
-    }
-    else if(strcmp(method, "play") == 0)
-    {
-        player->play();
-        response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
-    }
-    else if(strcmp(method, "pause") == 0)
-    {
-        player->pause();
-        response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
-    }
-    else if(strcmp(method, "setVolume") == 0)
-    {
-        double volume = args == nullptr ? 1.0 : fl_value_get_float(args);
-        player->setVolume(volume);
-        response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
-    }
-    else if(strcmp(method, "seek") == 0)
-    {
-        if(args)
+    try {
+        if(strcmp(method, "setUrl") == 0)
         {
-            gint64 position = fl_value_get_int(args);
-            player->seek(position);
+            const gchar* url = fl_value_get_string(args);
+            player->setUrl(url);
+            response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
         }
+        else if(strcmp(method, "play") == 0)
+        {
+            player->play();
+            response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+        }
+        else if(strcmp(method, "pause") == 0)
+        {
+            player->pause();
+            response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+        }
+        else if(strcmp(method, "setVolume") == 0)
+        {
+            double volume = args == nullptr ? 1.0 : fl_value_get_float(args);
+            player->setVolume(volume);
+            response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+        }
+        else if(strcmp(method, "seek") == 0)
+        {
+            if(args)
+            {
+                gint64 position = fl_value_get_int(args);
+                player->seek(position);
+            }
 
-        response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+            response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+        }
+        else if(strcmp(method, "setRate") == 0)
+        {
+            double rate = args == nullptr ? 1.0 : fl_value_get_float(args);
+            player->setRate(rate);
+            response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
+        }
+        else
+        {
+            response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+        }
     }
-    else if(strcmp(method, "setRate") == 0)
-    {
-        double rate = args == nullptr ? 1.0 : fl_value_get_float(args);
-        player->setRate(rate);
-        response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
-    }
-    else
-    {
-        response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+    catch (const AudioPlayerException& exception) {
+        response = FL_METHOD_RESPONSE(fl_method_error_response_new("audio_player_error", exception.what(), nullptr));
     }
 
     fl_method_call_respond(method_call, response, nullptr);
-}
-
-FlMethodResponse* get_platform_version()
-{
-    struct utsname uname_data = {};
-    uname(&uname_data);
-    g_autofree gchar* version = g_strdup_printf("Linux %s", uname_data.version);
-    g_autoptr(FlValue) result = fl_value_new_string(version);
-    return FL_METHOD_RESPONSE(fl_method_success_response_new(result));
 }
 
 static void audio_player_gst_plugin_dispose(GObject* object)

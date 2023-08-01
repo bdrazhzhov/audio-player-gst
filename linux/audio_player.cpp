@@ -4,6 +4,7 @@
 #include "audio_player.h"
 #include <iostream>
 #include <map>
+#include "audio_player_exception.h"
 
 #define GST_PLAY_FLAG_DOWNLOAD (1 << 7)
 
@@ -34,9 +35,9 @@ void AudioPlayer::play()
 {
     GstStateChangeReturn ret = gst_element_set_state(_playbin, GST_STATE_PLAYING);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        g_printerr ("Unable to set the pipeline to the playing state.\n");
         gst_object_unref (_playbin);
         _playbin = nullptr;
+        throw AudioPlayerException("Unable to set the pipeline to the playing state");
     } else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
         _isLive = true;
     }
@@ -44,7 +45,10 @@ void AudioPlayer::play()
 
 void AudioPlayer::pause()
 {
-    gst_element_set_state(_playbin, GST_STATE_PAUSED);
+    GstStateChangeReturn ret = gst_element_set_state(_playbin, GST_STATE_PAUSED);
+    if (ret == GST_STATE_CHANGE_FAILURE) {
+        throw AudioPlayerException("Unable to set the pipeline to GST_STATE_PAUSED");
+    }
 }
 
 void AudioPlayer::setVolume(double value)
@@ -68,7 +72,7 @@ void AudioPlayer::setUrl(const char* urlString)
 
     GstStateChangeReturn ret = gst_element_set_state(_playbin, GST_STATE_READY);
     if (ret == GST_STATE_CHANGE_FAILURE) {
-        throw "Unable to set the pipeline to GST_STATE_READY.";
+        throw AudioPlayerException("Unable to set the pipeline to GST_STATE_READY");
     }
 
     _isBuffered = false;
@@ -293,33 +297,35 @@ void AudioPlayer::_seek(gint64 position, gdouble rate)
 {
     if(!_playbin || !_seekEnabled) return;
 
-    gboolean result;
-
+    gint64 start, end;
     if(_rate > 0)
     {
-        result = gst_element_seek(_playbin,
-                                  rate,
-                                  GST_FORMAT_TIME,
-                                  static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE),
-                                  GST_SEEK_TYPE_SET,
-                                  position,
-                                  GST_SEEK_TYPE_SET,
-                                  duration());
-
+        start = position;
+        end = duration();
     }
     else
     {
-        result = gst_element_seek(_playbin,
-                                  rate,
-                                  GST_FORMAT_TIME,
-                                  static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE),
-                                  GST_SEEK_TYPE_SET,
-                                  0,
-                                  GST_SEEK_TYPE_SET,
-                                  position);
+        start = 0;
+        end = position;
     }
 
-    if(result) _rate = rate;
+    gboolean result = gst_element_seek(_playbin,
+                                       rate,
+                                       GST_FORMAT_TIME,
+                                       static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE),
+                                       GST_SEEK_TYPE_SET,
+                                       start,
+                                       GST_SEEK_TYPE_SET,
+                                       end);
+
+    if(result)
+    {
+        _rate = rate;
+    }
+    else
+    {
+        throw AudioPlayerException("Unable to set seek position or playing rate");
+    }
 }
 
 ///

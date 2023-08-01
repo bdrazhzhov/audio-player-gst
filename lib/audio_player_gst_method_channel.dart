@@ -10,19 +10,13 @@ class MethodChannelAudioPlayerGst extends AudioPlayerGstPlatform {
   final methodChannel = const MethodChannel('audio_player_gst');
 
   @override
-  Future<String?> getPlatformVersion() async {
-    final version = await methodChannel.invokeMethod<String>('getPlatformVersion');
-    return version;
-  }
-
-  @override
   Future<void> play() => methodChannel.invokeMethod('play');
 
   @override
   Future<void> pause()  => methodChannel.invokeMethod('pause');
 
   @override
-  Future<void> setVolume(double value) => methodChannel.invokeMethod('setVolume', value);
+  Future<void> setVolume(double volume) => methodChannel.invokeMethod('setVolume', volume);
 
   @override
   Future<void> setUrl(String url) => methodChannel.invokeMethod('setUrl', url);

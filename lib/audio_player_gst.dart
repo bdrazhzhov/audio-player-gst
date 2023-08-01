@@ -38,10 +38,9 @@ class AudioPlayerGst {
     }).distinct();
   }
 
-  Future<String?> getPlatformVersion() => AudioPlayerGstPlatform.instance.getPlatformVersion();
   Future<void> play() => AudioPlayerGstPlatform.instance.play();
   Future<void> pause() => AudioPlayerGstPlatform.instance.pause();
-  Future<void> setVolume(double value) => AudioPlayerGstPlatform.instance.setVolume(value);
+  Future<void> setVolume(double volume) => AudioPlayerGstPlatform.instance.setVolume(volume);
   Future<void> setUrl(String url) => AudioPlayerGstPlatform.instance.setUrl(url);
   Future<void> seek(Duration position) => AudioPlayerGstPlatform.instance.seek(position);
   Future<void> setRate(double rate) => AudioPlayerGstPlatform.instance.setRate(rate);

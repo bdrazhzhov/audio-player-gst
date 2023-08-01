@@ -23,10 +23,6 @@ abstract class AudioPlayerGstPlatform extends PlatformInterface {
     _instance = instance;
   }
 
-  Future<String?> getPlatformVersion() {
-    throw UnimplementedError('platformVersion() has not been implemented.');
-  }
-
   Future<void> play() {
     throw UnimplementedError('play() has not been implemented.');
   }
@@ -35,7 +31,7 @@ abstract class AudioPlayerGstPlatform extends PlatformInterface {
     throw UnimplementedError('pause() has not been implemented.');
   }
 
-  Future<void> setVolume(double value) {
+  Future<void> setVolume(double volume) {
     throw UnimplementedError('setVolume() has not been implemented.');
   }
 
