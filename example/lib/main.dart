@@ -19,7 +19,6 @@ class MyApp extends StatelessWidget {
   }
 }
 
-
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -28,6 +27,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
+  bool _playing = false;
   double _volume = 0.05;
   var _duration = Duration.zero;
   var _position = Duration.zero;
@@ -41,7 +41,21 @@ class _HomePageState extends State<HomePage> {
           _duration = (event as DurationEvent).duration;
           setState(() {});
         case PlayingStateEvent:
-          break;
+          final playingStateEvent = event as PlayingStateEvent;
+          switch(playingStateEvent.state)
+          {
+            case PlayingState.pending:
+            case PlayingState.idle:
+            case PlayingState.ready:
+              break;
+            case PlayingState.playing:
+              _playing = true;
+              setState(() {});
+            case PlayingState.paused:
+              _playing = false;
+              setState(() {});
+            case PlayingState.unknown:
+          }
         case PositionEvent:
           _position = (event as PositionEvent).position;
           setState(() {});
@@ -65,18 +79,18 @@ class _HomePageState extends State<HomePage> {
         children: [
           Row(
             children: [
-              TextButton(
-                  onPressed: (){
-                    player.play();
-                  },
-                  child: const Text('Play')
-              ),
-              TextButton(
-                  onPressed: (){
+              IconButton(
+                onPressed: (){
+                  if(_playing) {
                     player.pause();
-                  },
-                  child: const Text('Pause')
+                  }
+                  else {
+                    player.play();
+                  }
+                },
+                icon: Icon(_playing ? Icons.pause : Icons.play_arrow)
               ),
+              const Text('Volume:'),
               Slider(
                 value: _volume,
                 onChanged: (double value){
@@ -85,6 +99,7 @@ class _HomePageState extends State<HomePage> {
                   player.setVolume(value);
                 },
               ),
+              const Text('Speed:'),
               TextButton(onPressed: () => player.setRate(0.5), child: const Text('0.5x')),
               TextButton(onPressed: () => player.setRate(1.0), child: const Text('1.0x')),
               TextButton(onPressed: () => player.setRate(1.5), child: const Text('1.5x'))
@@ -105,7 +120,11 @@ class _HomePageState extends State<HomePage> {
               ListTile(
                 leading: IconButton(
                   icon: const Icon(Icons.play_arrow),
-                  onPressed: () => _showMyDialog(context),
+                  // onPressed: () => _showMyDialog(context),
+                  onPressed: () async {
+                    await player.setUrl('file:///media/Media/Music/Avril Lavigne/Let Go/03. Sk8ter Boi.mp3');
+                    await player.play();
+                  },
                 ),
                 title: const Text('Track #1'),
               ),
@@ -130,7 +149,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 }
-
 
 Future<void> _showMyDialog(context) async {
   return showDialog<void>(

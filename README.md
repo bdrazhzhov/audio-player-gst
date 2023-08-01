@@ -1,15 +1,36 @@
 # audio_player_gst
 
-A new Flutter project.
+A Flutter plugin allowing play audio (local or from web) on linux using gstreamer libs.
 
-## Getting Started
+## Dependencies
 
-This project is a starting point for a Flutter
-[plug-in package](https://flutter.dev/developing-packages/),
-a specialized package that includes platform-specific implementation code for
-Android and/or iOS.
+libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev gstreamer1.0-plugins-good gstreamer1.0-plugins-bad
 
-For help getting started with Flutter development, view the
-[online documentation](https://flutter.dev/docs), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Quick start
 
+```dart
+import 'package:audio_player_gst/audio_player_gst.dart';
+
+final player = AudioPlayerGst();                // Create player
+await player.setUrl(                            // Load a URL
+  'https://example.com/song.mp3');              // Schemes: (https: | file:)
+await player.play();                            // Play while waiting for completion
+await player.pause();                           // Pause but remain ready to play
+await player.seek(Duration(second: 10));        // Jump to the 10 second position
+await player.setRate(2.0);                      // Twice as fast
+await player.setVolume(0.5);                    // Half as loud
+```
+
+## Working with events stream
+
+```dart
+AudioPlayerGst.eventsStream().listen((EventBase event) {
+  switch(event.runtimeType) {
+    case DurationEvent: ...
+    case PlayingStateEvent: ...
+    case PositionEvent: ...
+    case BufferingEvent: ...
+    case PlayingCompletedEvent: ...
+  }
+});
+```

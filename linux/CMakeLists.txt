@@ -32,7 +32,9 @@ link_directories(
 
 # Any new source files that you add to the plugin should be added here.
 list(APPEND PLUGIN_SOURCES
-  "audio_player_gst_plugin.cc" audio_player.cpp
+  "audio_player_gst_plugin.cc"
+  audio_player.cpp
+  flutter_event_sender.cpp
 )
 
 # Define the plugin library target. Its name must not be changed (see comment

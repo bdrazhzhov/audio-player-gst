@@ -14,6 +14,14 @@ class AudioPlayerGst {
   };
 
   static const _eventChannel = EventChannel('audio_player_gst/events');
+  /// Stream containing events of the player state changes
+  ///
+  /// List of event types:
+  /// - [PlayingStateEvent]
+  /// - [DurationEvent] - currently playing audio length is in [duration] field of the event
+  /// - [PositionEvent] - currently playing audio position is in [position] field of the event
+  /// - [BufferingEvent] - occurs when audio is being downloaded from network until it's fully finished.
+  /// [percent] contains amount of downloaded data
   static Stream<EventBase> eventsStream() {
     return _eventChannel.receiveBroadcastStream().map((dynamic event) {
       final map = event as Map<Object?, Object?>;
@@ -38,10 +46,20 @@ class AudioPlayerGst {
     }).distinct();
   }
 
+  /// Starts playing
   Future<void> play() => AudioPlayerGstPlatform.instance.play();
+  /// Pauses currently playing audio
   Future<void> pause() => AudioPlayerGstPlatform.instance.pause();
+  /// Changes volume of audio. Allowed interval: [[0, 1.0]]
   Future<void> setVolume(double volume) => AudioPlayerGstPlatform.instance.setVolume(volume);
+  /// Sets audio url
   Future<void> setUrl(String url) => AudioPlayerGstPlatform.instance.setUrl(url);
+  /// Sets the position currently playing audio
   Future<void> seek(Duration position) => AudioPlayerGstPlatform.instance.seek(position);
+  /// Changes playing audio speed.
+  ///  - Default: 1.0
+  ///  - Double speed: 2.0
+  ///  - Half speed: 0.5
+  ///  - Positive values for playing forward. The negative ones for playing backward
   Future<void> setRate(double rate) => AudioPlayerGstPlatform.instance.setRate(rate);
 }

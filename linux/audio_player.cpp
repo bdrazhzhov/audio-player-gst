@@ -8,8 +8,10 @@
 
 #define GST_PLAY_FLAG_DOWNLOAD (1 << 7)
 
-AudioPlayer::AudioPlayer(FlEventChannel* eventChannel) : _eventChannel(eventChannel)
+AudioPlayer::AudioPlayer(FlEventChannel* eventChannel)
 {
+    _eventSender = std::make_unique<FlutterEventSender>(eventChannel);
+
     gst_init(nullptr, nullptr);
 
     _playbin = gst_element_factory_make("playbin", "playbin");
@@ -33,20 +35,30 @@ AudioPlayer::~AudioPlayer()
 
 void AudioPlayer::play()
 {
+    if(!_isUrlSet) return;
+
     GstStateChangeReturn ret = gst_element_set_state(_playbin, GST_STATE_PLAYING);
-    if (ret == GST_STATE_CHANGE_FAILURE) {
+    if (ret == GST_STATE_CHANGE_FAILURE)
+    {
         gst_object_unref (_playbin);
         _playbin = nullptr;
-        throw AudioPlayerException("Unable to set the pipeline to the playing state");
-    } else if (ret == GST_STATE_CHANGE_NO_PREROLL) {
+        throw AudioPlayerException("Unable to set the pipeline to GST_STATE_PLAYING");
+    }
+    else if (ret == GST_STATE_CHANGE_NO_PREROLL)
+    {
         _isLive = true;
     }
 }
 
 void AudioPlayer::pause()
 {
+    GstState state;
+    gst_element_get_state(_playbin, &state, nullptr, GST_CLOCK_TIME_NONE);
+    if(state != GST_STATE_PLAYING) return;
+
     GstStateChangeReturn ret = gst_element_set_state(_playbin, GST_STATE_PAUSED);
-    if (ret == GST_STATE_CHANGE_FAILURE) {
+    if (ret == GST_STATE_CHANGE_FAILURE)
+    {
         throw AudioPlayerException("Unable to set the pipeline to GST_STATE_PAUSED");
     }
 }
@@ -55,9 +67,12 @@ void AudioPlayer::setVolume(double value)
 {
     if(!_playbin) return;
 
-    if (value > 1) {
+    if (value > 1)
+    {
         value = 1;
-    } else if (value < 0) {
+    }
+    else if (value < 0)
+    {
         value = 0;
     }
     g_object_set(G_OBJECT(_playbin), "volume", value, nullptr);
@@ -65,6 +80,7 @@ void AudioPlayer::setVolume(double value)
 
 void AudioPlayer::setUrl(const char* urlString)
 {
+    _isUrlSet = false;
     gst_element_set_state(_playbin, GST_STATE_NULL);
     g_object_set(GST_OBJECT(_playbin), "uri", urlString, nullptr);
 
@@ -76,6 +92,7 @@ void AudioPlayer::setUrl(const char* urlString)
     }
 
     _isBuffered = false;
+    _isUrlSet = true;
 }
 
 gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioPlayer* data)
@@ -105,13 +122,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
 
 //            std::cout << "State changed from " << states[old_state] << " to " << states[new_state] << std::endl;
 
-            if(data->_eventChannel)
-            {
-                g_autoptr(FlValue) map = fl_value_new_map();
-                fl_value_set_string(map, "event", fl_value_new_string("audio.playingState"));
-                fl_value_set_string(map, "value", fl_value_new_string(states[new_state].c_str()));
-                fl_event_channel_send(data->_eventChannel, map, nullptr, nullptr);
-            }
+            data->_eventSender->send("audio.playingState", states[new_state]);
 
             if(new_state == GST_STATE_PLAYING || new_state == GST_STATE_PAUSED)
             {
@@ -132,12 +143,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
         case GST_MESSAGE_EOS:
         {
             std::cout << "Playback ended" << std::endl;
-            if(!data->_eventChannel) break;
-
-            g_autoptr(FlValue) map = fl_value_new_map();
-            fl_value_set_string(map, "event", fl_value_new_string("audio.completed"));
-            fl_value_set_string(map, "value", fl_value_new_bool(true));
-            fl_event_channel_send(data->_eventChannel, map, nullptr, nullptr);
+            data->_eventSender->send("audio.completed", true);
 
             break;
         }
@@ -146,12 +152,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             const gint64 duration = data->duration();
             std::cout << "[Duration update]: " << duration << std::endl;
 
-            if(!data->_eventChannel) break;
-
-            g_autoptr(FlValue) map = fl_value_new_map();
-            fl_value_set_string(map, "event", fl_value_new_string("audio.duration"));
-            fl_value_set_string(map, "value", fl_value_new_int(duration / 1'000'000));
-            fl_event_channel_send(data->_eventChannel, map, nullptr, nullptr);
+            data->_eventSender->send("audio.duration", duration / 1'000'000);
 
             break;
         }
@@ -257,10 +258,7 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
             return 0;
         }
 
-        g_autoptr(FlValue) map = fl_value_new_map();
-        fl_value_set_string(map, "event", fl_value_new_string("audio.position"));
-        fl_value_set_string(map, "value", fl_value_new_int(data->_position));
-        fl_event_channel_send(data->_eventChannel, map, nullptr, nullptr);
+        data->_eventSender->send("audio.position", data->_position);
     }
 
     if(data->_isBuffered && data->_downloadProgress < 1'000'000) // less than 100%
@@ -277,13 +275,7 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
             double percent = static_cast<double>(data->_downloadProgress) / 1'000'000.0;
             g_message("Downloading progress: %f%%\n", percent * 100.0);
 
-            if(data->_eventChannel)
-            {
-                g_autoptr(FlValue) map = fl_value_new_map();
-                fl_value_set_string(map, "event", fl_value_new_string("audio.buffering"));
-                fl_value_set_string(map, "value", fl_value_new_float(percent));
-                fl_event_channel_send(data->_eventChannel, map, nullptr, nullptr);
-            }
+            data->_eventSender->send("audio.buffering", percent);
         }
     }
 
