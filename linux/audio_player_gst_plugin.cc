@@ -27,7 +27,7 @@ static void audio_player_gst_plugin_handle_method_call(
         AudioPlayerGstPlugin* self,
         FlMethodCall* method_call)
 {
-    g_autoptr(FlMethodResponse) response = nullptr;
+    g_autoptr(FlMethodResponse) response;
 
     const gchar* method = fl_method_call_get_name(method_call);
     FlValue* args = fl_method_call_get_args(method_call);
@@ -107,7 +107,7 @@ static void audio_player_gst_plugin_init(AudioPlayerGstPlugin* self)
     player = new AudioPlayer(eventChannel);
 }
 
-static void method_call_cb(FlMethodChannel* channel, FlMethodCall* method_call,
+static void method_call_cb(FlMethodChannel* /*channel*/, FlMethodCall* method_call,
                            gpointer user_data)
 {
     AudioPlayerGstPlugin* plugin = AUDIO_PLAYER_GST_PLUGIN(user_data);

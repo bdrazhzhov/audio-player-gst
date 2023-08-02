@@ -14,14 +14,21 @@ class AudioPlayerGst {
   };
 
   static const _eventChannel = EventChannel('audio_player_gst/events');
+
   /// Stream containing events of the player state changes
   ///
   /// List of event types:
-  /// - [PlayingStateEvent]
-  /// - [DurationEvent] - currently playing audio length is in [duration] field of the event
-  /// - [PositionEvent] - currently playing audio position is in [position] field of the event
-  /// - [BufferingEvent] - occurs when audio is being downloaded from network until it's fully finished.
+  /// - [PlayingStateEvent] contains player state. Available states:
+  ///   - [pending]
+  ///   - [idle] - initial state
+  ///   - [ready] - player is ready to be paused
+  ///   - [paused] - player is paused and not playing now
+  ///   - [playing] - player is playing specified media
+  /// - [DurationEvent] currently playing audio length is in [duration] field of the event
+  /// - [PositionEvent] currently playing audio position is in [position] field of the event
+  /// - [BufferingEvent] occurs when audio is being downloaded from network until it's fully finished.
   /// [percent] contains amount of downloaded data
+  /// - [PlayingCompletedEvent] occurs when end of file reached
   static Stream<EventBase> eventsStream() {
     return _eventChannel.receiveBroadcastStream().map((dynamic event) {
       final map = event as Map<Object?, Object?>;

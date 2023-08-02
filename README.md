@@ -14,11 +14,11 @@ import 'package:audio_player_gst/audio_player_gst.dart';
 final player = AudioPlayerGst();                // Create player
 await player.setUrl(                            // Load a URL
   'https://example.com/song.mp3');              // Schemes: (https: | file:)
-await player.play();                            // Play while waiting for completion
-await player.pause();                           // Pause but remain ready to play
+await player.play();                            // Start playing
+await player.pause();                           // Pause currently playing media
 await player.seek(Duration(second: 10));        // Jump to the 10 second position
-await player.setRate(2.0);                      // Twice as fast
-await player.setVolume(0.5);                    // Half as loud
+await player.setRate(2.0);                      // Double playing speed
+await player.setVolume(0.5);                    // Half playing speed
 ```
 
 ## Working with events stream
@@ -34,3 +34,4 @@ AudioPlayerGst.eventsStream().listen((EventBase event) {
   }
 });
 ```
+There is no ability to create multiple GStreamer player instances for now.

@@ -284,7 +284,8 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
 
 /// Changes position and speed of the playback
 /// \param position in nanoseconds
-/// \param rate 1.0 - normal speed, 2.0 double speed, 0.5 - half speed, positive values are forward, negative ones are backward
+/// \param rate 1.0 - normal speed, 2.0 double speed, 0.5 - half speed,
+/// positive values are forward, negative ones are backward
 void AudioPlayer::_seek(gint64 position, gdouble rate)
 {
     if(!_playbin || !_seekEnabled) return;
