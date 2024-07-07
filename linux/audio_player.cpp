@@ -23,6 +23,8 @@ AudioPlayer::AudioPlayer(FlEventChannel* eventChannel)
     _bus = gst_element_get_bus(_playbin);
     gst_bus_add_watch(_bus, (GstBusFunc)AudioPlayer::_onBusMessage, this);
     _refreshTimer = g_timeout_add(100, (GSourceFunc)AudioPlayer::_onRefreshTick, this);
+
+    g_signal_connect(_playbin, "notify::volume", G_CALLBACK(AudioPlayer::_onVolumeChanged), this);
 }
 
 AudioPlayer::~AudioPlayer()
@@ -75,7 +77,12 @@ void AudioPlayer::setVolume(double value)
     {
         value = 0;
     }
-    g_object_set(G_OBJECT(_playbin), "volume", value, nullptr);
+
+    _volume = value;
+
+    _isVolumeAboutToSet = true;
+    g_object_set(G_OBJECT(_playbin), "volume", _volume, nullptr);
+    _isVolumeAboutToSet = false;
 }
 
 void AudioPlayer::setUrl(const char* urlString)
@@ -336,4 +343,16 @@ void AudioPlayer::setRate(double rate)
     if(rate == _rate) return;
 
     _seek(_position, rate);
+}
+
+void AudioPlayer::_onVolumeChanged(GstElement* volumeElement, GParamSpec* pspec, AudioPlayer* data)
+{
+    if(data->_isVolumeAboutToSet)
+    {
+        data->_isVolumeAboutToSet = false;
+        return;
+    }
+
+    g_object_get(volumeElement, "volume", &data->_volume, NULL);
+    data->_eventSender->send("audio.volume", data->_volume);
 }

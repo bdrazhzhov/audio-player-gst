@@ -20,10 +20,13 @@ class AudioPlayer
     gboolean _seekEnabled = false;
     gint64 _position{};
     gdouble _rate = 1.0;
+    gdouble _volume = 1.0;
     bool _isUrlSet = false;
+    bool _isVolumeAboutToSet = false;
 
     static gboolean _onBusMessage(GstBus *bus, GstMessage *message, AudioPlayer *data);
     static gboolean _onRefreshTick(AudioPlayer *data);
+    static void _onVolumeChanged(GstElement* volume, GParamSpec* pspec, AudioPlayer* user_data);
     void _seek(gint64 position, gdouble rate);
 
 public:

@@ -48,3 +48,12 @@ class PlayingCompletedEvent extends EventBase {
   @override
   List<Object?> get props => [];
 }
+
+class VolumeEvent extends EventBase {
+  final double value;
+
+  VolumeEvent(this.value);
+
+  @override
+  List<Object?> get props => [value];
+}

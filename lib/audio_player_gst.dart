@@ -29,6 +29,7 @@ class AudioPlayerGst {
   /// - [BufferingEvent] occurs when audio is being downloaded from network until it's fully finished.
   /// [percent] contains amount of downloaded data
   /// - [PlayingCompletedEvent] occurs when end of file reached
+  /// - [VolumeEvent] currently playing audio volume is in [value] field of the event
   static Stream<EventBase> eventsStream() {
     return _eventChannel.receiveBroadcastStream().map((dynamic event) {
       final map = event as Map<Object?, Object?>;
@@ -47,6 +48,9 @@ class AudioPlayerGst {
           return BufferingEvent(value);
         case 'audio.completed':
           return PlayingCompletedEvent();
+        case 'audio.volume':
+          final value = map['value'] as double;
+          return VolumeEvent(value);
       }
 
       return UnknownEvent();
