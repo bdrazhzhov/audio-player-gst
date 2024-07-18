@@ -110,7 +110,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             gchar *debug;
 
             gst_message_parse_error(message, &err, &debug);
-            std::cerr << "[GError]: " << err->code << " - " << err->message << std::endl;
+            g_print("[audio_player_gst][GError]: %d, %s", err->code, err->message);
             g_error_free(err);
             g_free(debug);
             break;
@@ -127,8 +127,6 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             GstState old_state, new_state;
             gst_message_parse_state_changed(message, &old_state, &new_state, nullptr);
 
-//            std::cout << "State changed from " << states[old_state] << " to " << states[new_state] << std::endl;
-
             data->_eventSender->send("audio.playingState", states[new_state]);
 
             if(new_state == GST_STATE_PLAYING || new_state == GST_STATE_PAUSED)
@@ -140,7 +138,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
                 }
                 else
                 {
-                    g_printerr("Seeking query failed.\n");
+                    g_printerr("[audio_player_gst]: Seeking query failed.\n");
                 }
                 gst_query_unref(query);
             }
@@ -149,7 +147,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
         }
         case GST_MESSAGE_EOS:
         {
-            std::cout << "Playback ended" << std::endl;
+            g_print("[audio_player_gst]: Playback finished");
             data->_eventSender->send("audio.completed", true);
 
             break;
@@ -157,7 +155,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
         case GST_MESSAGE_DURATION_CHANGED:
         {
             const gint64 duration = data->duration();
-            std::cout << "[Duration update]: " << duration << std::endl;
+            g_print("[Duration update]: %ld", duration);
 
             data->_eventSender->send("audio.duration", duration / 1'000'000);
 
@@ -170,7 +168,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             if (data->_isLive) break;
 
             gst_message_parse_buffering(message, &data->_bufferingLevel);
-            g_print("Buffering (%3d%%)\r", data->_bufferingLevel);
+//            g_print("Buffering (%3d%%)\r", data->_bufferingLevel);
 
             /* Wait until buffering is complete before start/resume playing */
 //            if (data->_bufferingLevel < 100)
@@ -186,7 +184,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             break;
         case GST_MESSAGE_ELEMENT:
         {
-            g_message("Message element: %s", gst_structure_get_name(gst_message_get_structure(message)));
+            g_message("[audio_player_gst]: Message element: %s", gst_structure_get_name(gst_message_get_structure(message)));
             break;
         }
         default:
@@ -235,7 +233,8 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
                 {GST_MESSAGE_DEVICE_CHANGED, "GST_MESSAGE_DEVICE_CHANGED"},
                 {GST_MESSAGE_INSTANT_RATE_REQUEST, "GST_MESSAGE_INSTANT_RATE_REQUEST"},
             };
-            std::cout << "Unprocessed message type: " << messageTypes[GST_MESSAGE_TYPE(message)] << std::endl;
+            std::cout << "[audio_player_gst]: Unprocessed message type: ";
+            std::cout << messageTypes[GST_MESSAGE_TYPE(message)] << std::endl;
             break;
     }
 
@@ -247,7 +246,7 @@ gint64 AudioPlayer::duration()
 {
     gint64 duration = 0;
     if (!gst_element_query_duration(_playbin, GST_FORMAT_TIME, &duration)) {
-        std::cerr << "Could not query current duration." << std::endl;
+        g_print("[audio_player_gst]: Could not query current duration.");
         return 0;
     }
     return duration;
@@ -261,7 +260,7 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
     gst_element_get_state(data->_playbin, &playbinState, nullptr, GST_CLOCK_TIME_NONE);
     if (playbinState == GST_STATE_PLAYING) {
         if (!gst_element_query_position(data->_playbin, GST_FORMAT_TIME, &data->_position)) {
-            std::cerr << "Could not query current position." << std::endl;
+            g_print("[audio_player_gst]: Could not query current position.");
             return 0;
         }
 
@@ -280,7 +279,7 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
             gint64 start;
             gst_query_parse_nth_buffering_range (query, 0, &start, &data->_downloadProgress);
             double percent = static_cast<double>(data->_downloadProgress) / 1'000'000.0;
-            g_message("Downloading progress: %f%%\n", percent * 100.0);
+//            g_message("Downloading progress: %f%%\n", percent * 100.0);
 
             data->_eventSender->send("audio.buffering", percent);
         }
