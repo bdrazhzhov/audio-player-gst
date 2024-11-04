@@ -32,7 +32,7 @@ static void audio_player_gst_plugin_handle_method_call(
     const gchar* method = fl_method_call_get_name(method_call);
     FlValue* args = fl_method_call_get_args(method_call);
 
-    printf("Method name: %s\n", method);
+//    printf("Method name: %s\n", method);
 
     try {
         if(strcmp(method, "setUrl") == 0)

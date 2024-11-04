@@ -110,7 +110,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             gchar *debug;
 
             gst_message_parse_error(message, &err, &debug);
-            g_print("[audio_player_gst][GError]: %d, %s", err->code, err->message);
+            //g_print("[audio_player_gst][GError]: %d, %s", err->code, err->message);
             g_error_free(err);
             g_free(debug);
             break;
@@ -138,7 +138,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
                 }
                 else
                 {
-                    g_printerr("[audio_player_gst]: Seeking query failed.\n");
+                    //g_printerr("[audio_player_gst]: Seeking query failed.\n");
                 }
                 gst_query_unref(query);
             }
@@ -147,7 +147,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
         }
         case GST_MESSAGE_EOS:
         {
-            g_print("[audio_player_gst]: Playback finished");
+            //g_print("[audio_player_gst]: Playback finished");
             data->_eventSender->send("audio.completed", true);
 
             break;
@@ -184,7 +184,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             break;
         case GST_MESSAGE_ELEMENT:
         {
-            g_message("[audio_player_gst]: Message element: %s", gst_structure_get_name(gst_message_get_structure(message)));
+            //g_message("[audio_player_gst]: Message element: %s", gst_structure_get_name(gst_message_get_structure(message)));
             break;
         }
         default:
@@ -233,8 +233,8 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
                 {GST_MESSAGE_DEVICE_CHANGED, "GST_MESSAGE_DEVICE_CHANGED"},
                 {GST_MESSAGE_INSTANT_RATE_REQUEST, "GST_MESSAGE_INSTANT_RATE_REQUEST"},
             };
-            std::cout << "[audio_player_gst]: Unprocessed message type: ";
-            std::cout << messageTypes[GST_MESSAGE_TYPE(message)] << std::endl;
+            //std::cout << "[audio_player_gst]: Unprocessed message type: ";
+            //std::cout << messageTypes[GST_MESSAGE_TYPE(message)] << std::endl;
             break;
     }
 
@@ -246,7 +246,7 @@ gint64 AudioPlayer::duration()
 {
     gint64 duration = 0;
     if (!gst_element_query_duration(_playbin, GST_FORMAT_TIME, &duration)) {
-        g_print("[audio_player_gst]: Could not query current duration.");
+        //g_print("[audio_player_gst]: Could not query current duration.");
         return 0;
     }
     return duration;
@@ -260,7 +260,7 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
     gst_element_get_state(data->_playbin, &playbinState, nullptr, GST_CLOCK_TIME_NONE);
     if (playbinState == GST_STATE_PLAYING) {
         if (!gst_element_query_position(data->_playbin, GST_FORMAT_TIME, &data->_position)) {
-            g_print("[audio_player_gst]: Could not query current position.");
+            //g_print("[audio_player_gst]: Could not query current position.");
             return 0;
         }
 
