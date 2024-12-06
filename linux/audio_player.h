@@ -11,6 +11,7 @@ class AudioPlayer
 {
     std::unique_ptr<FlutterEventSender> _eventSender;
     GstElement* _playbin = nullptr;
+    GstElement* _scaletempo = nullptr;
     GstBus* _bus = nullptr;
     guint _refreshTimer{};
     bool _isBuffered = false;
@@ -20,6 +21,7 @@ class AudioPlayer
     gboolean _seekEnabled = false;
     gint64 _position{};
     gdouble _rate = 1.0;
+    gdouble _speed = 1.0;
     gdouble _volume = 1.0;
     bool _isUrlSet = false;
     bool _isVolumeAboutToSet = false;
@@ -39,5 +41,6 @@ public:
     void setUrl(const char* urlString);
     void seek(gint64 position);
     void setRate(double rate);
+    void setSpeed(double speed);
     gint64 duration();
 };

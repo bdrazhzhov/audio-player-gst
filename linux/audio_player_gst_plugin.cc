@@ -13,6 +13,8 @@
   (G_TYPE_CHECK_INSTANCE_CAST((obj), audio_player_gst_plugin_get_type(), \
                               AudioPlayerGstPlugin))
 
+#define printf(format, ...)
+
 struct _AudioPlayerGstPlugin
 {
     GObject parent_instance;
@@ -32,12 +34,13 @@ static void audio_player_gst_plugin_handle_method_call(
     const gchar* method = fl_method_call_get_name(method_call);
     FlValue* args = fl_method_call_get_args(method_call);
 
-//    printf("Method name: %s\n", method);
+    printf("[audio_player_gst]: Method name: %s\n", method);
 
     try {
         if(strcmp(method, "setUrl") == 0)
         {
             const gchar* url = fl_value_get_string(args);
+            printf("%s\n", url);
             player->setUrl(url);
             response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
         }
@@ -54,6 +57,7 @@ static void audio_player_gst_plugin_handle_method_call(
         else if(strcmp(method, "setVolume") == 0)
         {
             double volume = args == nullptr ? 1.0 : fl_value_get_float(args);
+            printf("%f\n", volume);
             player->setVolume(volume);
             response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
         }
@@ -62,6 +66,7 @@ static void audio_player_gst_plugin_handle_method_call(
             if(args)
             {
                 gint64 position = fl_value_get_int(args);
+                printf("%ld\n", position);
                 player->seek(position);
             }
 
@@ -71,6 +76,7 @@ static void audio_player_gst_plugin_handle_method_call(
         {
             double rate = args == nullptr ? 1.0 : fl_value_get_float(args);
             player->setRate(rate);
+            printf("%f\n", rate);
             response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
         }
         else
@@ -80,6 +86,7 @@ static void audio_player_gst_plugin_handle_method_call(
     }
     catch (const AudioPlayerException& exception) {
         response = FL_METHOD_RESPONSE(fl_method_error_response_new("audio_player_error", exception.what(), nullptr));
+        printf("[audio_player_gst]: Exception!\n");
     }
 
     fl_method_call_respond(method_call, response, nullptr);

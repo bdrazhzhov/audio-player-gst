@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-abstract class EventBase extends Equatable {}
+sealed class EventBase extends Equatable {}
 
 class UnknownEvent extends EventBase {
   @override
@@ -16,7 +16,7 @@ class DurationEvent extends EventBase {
   List<Object> get props => [duration];
 }
 
-enum PlayingState { pending, idle, ready, playing, paused, unknown }
+enum PlayingState { pending, idle, ready, playing, paused, completed, unknown }
 class PlayingStateEvent extends EventBase {
   final PlayingState state;
 
@@ -42,11 +42,6 @@ class BufferingEvent extends EventBase {
 
   @override
   List<Object?> get props => [percent];
-}
-
-class PlayingCompletedEvent extends EventBase {
-  @override
-  List<Object?> get props => [];
 }
 
 class VolumeEvent extends EventBase {

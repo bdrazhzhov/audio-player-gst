@@ -7,6 +7,7 @@
 #include "audio_player_exception.h"
 
 #define GST_PLAY_FLAG_DOWNLOAD (1 << 7)
+#define g_print(format, ...)
 
 AudioPlayer::AudioPlayer(FlEventChannel* eventChannel)
 {
@@ -20,6 +21,9 @@ AudioPlayer::AudioPlayer(FlEventChannel* eventChannel)
     flags |= GST_PLAY_FLAG_DOWNLOAD;
     g_object_set (_playbin, "flags", flags, NULL);
 
+    _scaletempo = gst_element_factory_make("scaletempo", "scaletempo");
+    g_object_set(GST_OBJECT(_playbin), "audio-filter", _scaletempo, NULL);
+
     _bus = gst_element_get_bus(_playbin);
     gst_bus_add_watch(_bus, (GstBusFunc)AudioPlayer::_onBusMessage, this);
     _refreshTimer = g_timeout_add(100, (GSourceFunc)AudioPlayer::_onRefreshTick, this);
@@ -32,6 +36,7 @@ AudioPlayer::~AudioPlayer()
     g_source_remove(_refreshTimer);
     gst_object_unref(_bus);
     gst_element_set_state(_playbin, GST_STATE_NULL);
+    gst_object_unref(_scaletempo);
     gst_object_unref(_playbin);
 }
 
@@ -81,7 +86,7 @@ void AudioPlayer::setVolume(double value)
     _volume = value;
 
     _isVolumeAboutToSet = true;
-    g_object_set(G_OBJECT(_playbin), "volume", _volume, nullptr);
+    g_object_set(GST_OBJECT(_playbin), "volume", _volume, nullptr);
     _isVolumeAboutToSet = false;
 }
 
@@ -155,7 +160,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
         case GST_MESSAGE_DURATION_CHANGED:
         {
             const gint64 duration = data->duration();
-            g_print("[Duration update]: %ld", duration);
+            g_print("[Duration update]: %ld\n", duration);
 
             data->_eventSender->send("audio.duration", duration / 1'000'000);
 
@@ -181,6 +186,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             /* Get a new clock */
             gst_element_set_state (data->_playbin, GST_STATE_PAUSED);
             gst_element_set_state (data->_playbin, GST_STATE_PLAYING);
+//            std::cout << "Clock lost" << std::endl;
             break;
         case GST_MESSAGE_ELEMENT:
         {
@@ -202,7 +208,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
                 {GST_MESSAGE_STATE_DIRTY, "GST_MESSAGE_STATE_DIRTY"},
                 {GST_MESSAGE_STEP_DONE, "GST_MESSAGE_STEP_DONE"},
                 {GST_MESSAGE_CLOCK_PROVIDE, "GST_MESSAGE_CLOCK_PROVIDE"},
-                {GST_MESSAGE_CLOCK_LOST, "GST_MESSAGE_CLOCK_LOST"},
+//                {GST_MESSAGE_CLOCK_LOST, "GST_MESSAGE_CLOCK_LOST"},
                 {GST_MESSAGE_NEW_CLOCK, "GST_MESSAGE_NEW_CLOCK"},
                 {GST_MESSAGE_STRUCTURE_CHANGE, "GST_MESSAGE_STRUCTURE_CHANGE"},
                 {GST_MESSAGE_STREAM_STATUS, "GST_MESSAGE_STREAM_STATUS"},
@@ -233,8 +239,8 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
                 {GST_MESSAGE_DEVICE_CHANGED, "GST_MESSAGE_DEVICE_CHANGED"},
                 {GST_MESSAGE_INSTANT_RATE_REQUEST, "GST_MESSAGE_INSTANT_RATE_REQUEST"},
             };
-            //std::cout << "[audio_player_gst]: Unprocessed message type: ";
-            //std::cout << messageTypes[GST_MESSAGE_TYPE(message)] << std::endl;
+//            std::cout << "[audio_player_gst]: Unprocessed message type: ";
+//            std::cout << messageTypes[GST_MESSAGE_TYPE(message)] << std::endl;
             break;
     }
 
@@ -334,14 +340,25 @@ void AudioPlayer::seek(gint64 position)
     gint64 newPosition = position * GST_MSECOND;
     if(newPosition == _position) return;
 
+    _position = newPosition;
+
     _seek(newPosition, _rate);
 }
 
 void AudioPlayer::setRate(double rate)
 {
     if(rate == _rate) return;
+    _rate = rate;
 
-    _seek(_position, rate);
+    _seek(_position, _rate);
+}
+
+void AudioPlayer::setSpeed(double speed)
+{
+  if(speed == _speed) return;
+  _speed = speed;
+
+  g_object_set(G_OBJECT(_scaletempo), "rate", _speed, nullptr);
 }
 
 void AudioPlayer::_onVolumeChanged(GstElement* volumeElement, GParamSpec* pspec, AudioPlayer* data)
