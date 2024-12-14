@@ -17,9 +17,9 @@ AudioPlayer::AudioPlayer(FlEventChannel* eventChannel)
 
     _playbin = gst_element_factory_make("playbin", "playbin");
     guint flags;
-    g_object_get (_playbin, "flags", &flags, NULL);
+    g_object_get(_playbin, "flags", &flags, NULL);
     flags |= GST_PLAY_FLAG_DOWNLOAD;
-    g_object_set (_playbin, "flags", flags, NULL);
+    g_object_set(_playbin, "flags", flags, NULL);
 
     _scaletempo = gst_element_factory_make("scaletempo", "scaletempo");
     g_object_set(GST_OBJECT(_playbin), "audio-filter", _scaletempo, NULL);
@@ -115,7 +115,12 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             gchar *debug;
 
             gst_message_parse_error(message, &err, &debug);
+
+            g_printerr("[audio_player_gst]: Error received from element %s: %s\n",
+                       GST_OBJECT_NAME(message->src), err->message);
+            g_printerr("[audio_player_gst]: Debugging information: %s\n", debug ? debug : "none");
             //g_print("[audio_player_gst][GError]: %d, %s", err->code, err->message);
+
             g_error_free(err);
             g_free(debug);
             break;
