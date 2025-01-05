@@ -104,6 +104,7 @@ void AudioPlayer::setUrl(const char* urlString)
     }
 
     _isBuffered = false;
+    _downloadProgress = 0;
     _isUrlSet = true;
 }
 
