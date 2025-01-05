@@ -127,6 +127,8 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
         }
         case GST_MESSAGE_STATE_CHANGED:
         {
+            if (GST_MESSAGE_SRC(message) != GST_OBJECT(data->_playbin)) break;
+
             static std::map<GstState, std::string> states = {
                 {GST_STATE_VOID_PENDING, "GST_STATE_VOID_PENDING"},
                 {GST_STATE_NULL,         "GST_STATE_NULL"},
@@ -137,21 +139,40 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             GstState old_state, new_state;
             gst_message_parse_state_changed(message, &old_state, &new_state, nullptr);
 
-            data->_eventSender->send("audio.playingState", states[new_state]);
+//            std::cout << "[audio_player_gst]: State changed from " << states[old_state]
+//              << " to " << states[new_state] << std::endl;
 
-            if(new_state == GST_STATE_PLAYING || new_state == GST_STATE_PAUSED)
+            if(old_state == GST_STATE_READY && new_state == GST_STATE_PAUSED)
             {
-                GstQuery* query = gst_query_new_seeking(GST_FORMAT_TIME);
+                break;
+            }
+            else if(new_state == GST_STATE_READY)
+            {
+                GstStateChangeReturn ret =
+                    gst_element_set_state(data->_playbin, GST_STATE_PAUSED);
+                if (ret == GST_STATE_CHANGE_FAILURE)
+                {
+                    g_print("Unable to set the pipeline from GST_STATE_READY to "
+                            "GST_STATE_PAUSED.");
+                }
+            }
+            else if (new_state == GST_STATE_PLAYING && old_state == GST_STATE_PAUSED)
+            {
+                GstQuery *query = gst_query_new_seeking(GST_FORMAT_TIME);
+
                 if (gst_element_query(data->_playbin, query))
                 {
-                    gst_query_parse_seeking(query, nullptr, &data->_seekEnabled, nullptr, nullptr);
+                  gst_query_parse_seeking(query, nullptr, &data->_seekEnabled, nullptr, nullptr);
                 }
                 else
                 {
-                    //g_printerr("[audio_player_gst]: Seeking query failed.\n");
+                  //g_printerr("[audio_player_gst]: Seeking query failed.\n");
                 }
+
                 gst_query_unref(query);
             }
+
+            data->_eventSender->send("audio.playingState", states[new_state]);
 
             break;
         }
@@ -187,12 +208,12 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
 //                gst_element_set_state (data->_playbin, GST_STATE_PLAYING);
 //            break;
         }
-        case GST_MESSAGE_CLOCK_LOST:
-            /* Get a new clock */
-            gst_element_set_state (data->_playbin, GST_STATE_PAUSED);
-            gst_element_set_state (data->_playbin, GST_STATE_PLAYING);
+//        case GST_MESSAGE_CLOCK_LOST:
+//            /* Get a new clock */
+//            gst_element_set_state (data->_playbin, GST_STATE_PAUSED);
+//            gst_element_set_state (data->_playbin, GST_STATE_PLAYING);
 //            std::cout << "Clock lost" << std::endl;
-            break;
+//            break;
         case GST_MESSAGE_ELEMENT:
         {
             //g_message("[audio_player_gst]: Message element: %s", gst_structure_get_name(gst_message_get_structure(message)));
