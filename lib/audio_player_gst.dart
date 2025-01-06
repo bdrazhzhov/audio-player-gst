@@ -2,7 +2,6 @@
 import 'package:flutter/services.dart';
 
 import 'events.dart';
-import 'audio_player_gst_platform_interface.dart';
 
 class AudioPlayerGst {
   static const _playingStates = {
@@ -13,7 +12,8 @@ class AudioPlayerGst {
     "GST_STATE_PLAYING": PlayingState.playing
   };
 
-  static const _eventChannel = EventChannel('audio_player_gst/events');
+  final _eventChannel = const EventChannel('audio_player_gst/events');
+  final _methodChannel = const MethodChannel('audio_player_gst');
 
   /// Stream containing events of the player state changes
   ///
@@ -30,7 +30,7 @@ class AudioPlayerGst {
   /// [percent] contains amount of downloaded data
   /// - [PlayingCompletedEvent] occurs when the end of file is reached
   /// - [VolumeEvent] currently playing audio volume is in [value] field of the event
-  static Stream<EventBase> eventsStream() {
+  Stream<EventBase> eventsStream() {
     return _eventChannel.receiveBroadcastStream().map((dynamic event) {
       final map = event as Map<Object?, Object?>;
       switch(map['event']) {
@@ -58,19 +58,19 @@ class AudioPlayerGst {
   }
 
   /// Starts playing
-  Future<void> play() => AudioPlayerGstPlatform.instance.play();
+  Future<void> play() => _methodChannel.invokeMethod('play');
   /// Pauses currently playing audio
-  Future<void> pause() => AudioPlayerGstPlatform.instance.pause();
+  Future<void> pause() => _methodChannel.invokeMethod('pause');
   /// Changes volume of audio. Allowed interval: [[0, 1.0]]
-  Future<void> setVolume(double volume) => AudioPlayerGstPlatform.instance.setVolume(volume);
+  Future<void> setVolume(double volume) => _methodChannel.invokeMethod('setVolume', volume);
   /// Sets audio url
-  Future<void> setUrl(String url) => AudioPlayerGstPlatform.instance.setUrl(url);
+  Future<void> setUrl(String url) => _methodChannel.invokeMethod('setUrl', url);
   /// Sets the position currently playing audio
-  Future<void> seek(Duration position) => AudioPlayerGstPlatform.instance.seek(position);
+  Future<void> seek(Duration position) => _methodChannel.invokeMethod('seek', position.inMilliseconds);
   /// Changes playing audio speed.
   ///  - Default: 1.0
   ///  - Double speed: 2.0
   ///  - Half speed: 0.5
   ///  - Positive values for playing forward. The negative ones for playing backward
-  Future<void> setRate(double rate) => AudioPlayerGstPlatform.instance.setRate(rate);
+  Future<void> setRate(double rate) => _methodChannel.invokeMethod('setRate', rate);
 }

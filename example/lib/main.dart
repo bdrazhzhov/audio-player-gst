@@ -35,7 +35,7 @@ class _HomePageState extends State<HomePage> {
   final player = AudioPlayerGst();
 
   _HomePageState() {
-    AudioPlayerGst.eventsStream().listen((EventBase event) {
+    player.eventsStream().listen((EventBase event) {
       switch(event.runtimeType) {
         case DurationEvent:
           _duration = (event as DurationEvent).duration;
