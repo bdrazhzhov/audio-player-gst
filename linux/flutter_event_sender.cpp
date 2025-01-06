@@ -13,33 +13,33 @@ void FlutterEventSender::_send(const char* eventName, const std::function<void(c
     fl_event_channel_send(_eventChannel, map, nullptr, nullptr);
 }
 
-void FlutterEventSender::send(const char* eventName, const char* data)
+void FlutterEventSender::operator()(const char* eventName, const char* data)
 {
     _send(eventName, [data](const FlValue_autoptr& map){
         fl_value_set_string(map, "value", fl_value_new_string(data));
     });
 }
 
-void FlutterEventSender::send(const char* eventName, const std::string& data)
+void FlutterEventSender::operator()(const char* eventName, const std::string& data)
 {
-    send(eventName, data.c_str());
+  (*this)(eventName, data.c_str());
 }
 
-void FlutterEventSender::send(const char* eventName, bool value)
+void FlutterEventSender::operator()(const char* eventName, bool value)
 {
     _send(eventName, [value](const FlValue_autoptr& map){
         fl_value_set_string(map, "value", fl_value_new_bool(value));
     });
 }
 
-void FlutterEventSender::send(const char* eventName, int64_t value)
+void FlutterEventSender::operator()(const char* eventName, int64_t value)
 {
     _send(eventName, [value](const FlValue_autoptr& map){
         fl_value_set_string(map, "value", fl_value_new_int(value));
     });
 }
 
-void FlutterEventSender::send(const char* eventName, double value)
+void FlutterEventSender::operator()(const char* eventName, double value)
 {
     _send(eventName, [value](const FlValue_autoptr& map){
         fl_value_set_string(map, "value", fl_value_new_float(value));

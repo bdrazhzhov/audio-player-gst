@@ -15,9 +15,9 @@ class FlutterEventSender
 public:
     explicit FlutterEventSender(FlEventChannel* eventChannel) : _eventChannel(eventChannel) {}
 
-    void send(const char* eventName, const char* data);
-    void send(const char* eventName, const std::string& data);
-    void send(const char* eventName, bool value);
-    void send(const char* eventName, int64_t value);
-    void send(const char* eventName, double value);
+    void operator()(const char* eventName, const char* data);
+    void operator()(const char* eventName, const std::string& data);
+    void operator()(const char* eventName, bool value);
+    void operator()(const char* eventName, int64_t value);
+    void operator()(const char* eventName, double value);
 };

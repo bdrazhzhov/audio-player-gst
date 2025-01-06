@@ -9,7 +9,7 @@
 
 class AudioPlayer
 {
-    std::unique_ptr<FlutterEventSender> _eventSender;
+    FlutterEventSender _sendEvent;
     GstElement* _playbin = nullptr;
     GstElement* _scaletempo = nullptr;
     GstBus* _bus = nullptr;

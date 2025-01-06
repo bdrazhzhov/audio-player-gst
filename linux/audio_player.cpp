@@ -9,10 +9,8 @@
 #define GST_PLAY_FLAG_DOWNLOAD (1 << 7)
 #define g_print(format, ...)
 
-AudioPlayer::AudioPlayer(FlEventChannel* eventChannel)
+AudioPlayer::AudioPlayer(FlEventChannel* eventChannel) : _sendEvent(eventChannel)
 {
-    _eventSender = std::make_unique<FlutterEventSender>(eventChannel);
-
     gst_init(nullptr, nullptr);
 
     _playbin = gst_element_factory_make("playbin", "playbin");
@@ -173,14 +171,14 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
                 gst_query_unref(query);
             }
 
-            data->_eventSender->send("audio.playingState", states[new_state]);
+            data->_sendEvent("audio.playingState", states[new_state]);
 
             break;
         }
         case GST_MESSAGE_EOS:
         {
             //g_print("[audio_player_gst]: Playback finished");
-            data->_eventSender->send("audio.completed", true);
+            data->_sendEvent("audio.completed", true);
 
             break;
         }
@@ -189,12 +187,13 @@ gboolean AudioPlayer::_onBusMessage(GstBus* /*bus*/, GstMessage* message, AudioP
             const gint64 duration = data->duration();
             g_print("[Duration update]: %ld\n", duration);
 
-            data->_eventSender->send("audio.duration", duration / 1'000'000);
+            data->_sendEvent("audio.duration", duration / 1'000'000);
 
             break;
         }
         case GST_MESSAGE_BUFFERING:
         {
+//            g_message("GST_MESSAGE_BUFFERING\n");
             data->_isBuffered = true;
             /* If the stream is live, we do not care about buffering. */
             if (data->_isLive) break;
@@ -297,13 +296,16 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
             return 0;
         }
 
-        data->_eventSender->send("audio.position", data->_position);
+        data->_sendEvent("audio.position", data->_position);
     }
+
+//    g_message("Buffering state: %s - %ld\n", (data->_isBuffered ? "true" : "false"), data->_downloadProgress);
 
     if(data->_isBuffered && data->_downloadProgress < 1'000'000) // less than 100%
     {
         GstQuery* query = gst_query_new_buffering(GST_FORMAT_PERCENT);
         gboolean result = gst_element_query(data->_playbin, query);
+
         if(result)
         {
             // using first range (with index 0)
@@ -314,7 +316,7 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* data)
             double percent = static_cast<double>(data->_downloadProgress) / 1'000'000.0;
 //            g_message("Downloading progress: %f%%\n", percent * 100.0);
 
-            data->_eventSender->send("audio.buffering", percent);
+            data->_sendEvent("audio.buffering", percent);
         }
     }
 
@@ -397,5 +399,5 @@ void AudioPlayer::_onVolumeChanged(GstElement* volumeElement, GParamSpec* pspec,
     }
 
     g_object_get(volumeElement, "volume", &data->_volume, NULL);
-    data->_eventSender->send("audio.volume", data->_volume);
+    data->_sendEvent("audio.volume", data->_volume);
 }
