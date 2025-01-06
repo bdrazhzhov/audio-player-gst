@@ -11,30 +11,25 @@ project(${PROJECT_NAME} LANGUAGES CXX)
 # not be changed.
 set(PLUGIN_NAME "audio_player_gst_plugin")
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(GTK REQUIRED IMPORTED_TARGET gtk+-3.0)
-pkg_search_module(GLIB REQUIRED glib-2.0)
+
 pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 pkg_check_modules(GST_APP REQUIRED gstreamer-app-1.0)
-pkg_check_modules(GSTREAMER-AUDIO REQUIRED gstreamer-audio-1.0)
+
 include_directories(
-    ${GLIB_INCLUDE_DIRS}
-    ${GSTREAMER_INCLUDE_DIRS}
-    ${GSTREAMER-APP_INCLUDE_DIRS}
-    ${GSTREAMER-AUDIO_INCLUDE_DIRS}
+    ${GST_INCLUDE_DIRS}
+    ${GST_APP_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
 )
 link_directories(
-    ${GLIB_LIBRARY_DIRS}
-    ${GSTREAMER_LIBRARY_DIRS}
-    ${GSTREAMER-APP_LIBRARY_DIRS}
-    ${GSTREAMER-AUDIO_LIBRARY_DIRS}
+    ${GST_LIBRARY_DIRS}
+    ${GST_APP_LIBRARY_DIRS}
 )
 
 # Any new source files that you add to the plugin should be added here.
 list(APPEND PLUGIN_SOURCES
-  "audio_player_gst_plugin.cc"
-  audio_player.cpp
-  flutter_event_sender.cpp
+    audio_player_gst_plugin.cc
+    audio_player.cpp
+    flutter_event_sender.cpp
 )
 
 # Define the plugin library target. Its name must not be changed (see comment
@@ -56,9 +51,9 @@ target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 # Source include directories and library dependencies. Add any plugin-specific
 # dependencies here.
 target_include_directories(${PLUGIN_NAME} INTERFACE
-    "${CMAKE_CURRENT_SOURCE_DIR}/include" ${GST_INCLUDE_DIRS} ${GLIB_INCLUDE_DIRS})
+    "${CMAKE_CURRENT_SOURCE_DIR}/include" ${GST_INCLUDE_DIRS})
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter PkgConfig::GTK)
-target_link_libraries(${PLUGIN_NAME} PRIVATE ${GST_APP_LIBRARIES} ${GLIB_LIBRARIES})
+target_link_libraries(${PLUGIN_NAME} PRIVATE ${GST_APP_LIBRARIES})
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
