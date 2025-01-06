@@ -54,7 +54,12 @@ class _HomePageState extends State<HomePage> {
             case PlayingState.paused:
               _playing = false;
               setState(() {});
+            case PlayingState.completed:
+              // TODO: Handle this case.
+              throw UnimplementedError();
             case PlayingState.unknown:
+              // TODO: Handle this case.
+              throw UnimplementedError();
           }
         case PositionEvent:
           _position = (event as PositionEvent).position;
@@ -64,7 +69,6 @@ class _HomePageState extends State<HomePage> {
           final buffEvent = event as BufferingEvent;
           _buffered = Duration(microseconds: (_duration.inMicroseconds * buffEvent.percent).round());
           setState(() {});
-        case PlayingCompletedEvent:
       }
     });
   }
