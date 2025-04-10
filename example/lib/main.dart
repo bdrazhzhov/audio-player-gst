@@ -126,7 +126,7 @@ class _HomePageState extends State<HomePage> {
                   icon: const Icon(Icons.play_arrow),
                   // onPressed: () => _showMyDialog(context),
                   onPressed: () async {
-                    await player.setUrl('file:///media/Media/Music/Avril Lavigne/Let Go/03. Sk8ter Boi.mp3');
+                    await player.setUrl('https://cdn.uppbeat.io/audio-files/f7a17930b3ac8c8070a94a121bce181c/74ed4ae87d0bfba11a689fb424928cdc/ba58f01a66b005bbaa3f9dccabfc4dda/STREAMING-seize-the-day-andrey-rossi-main-version-14571-01-40.mp3');
                     await player.play();
                   },
                 ),

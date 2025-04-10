@@ -39,9 +39,16 @@ static void audio_player_gst_plugin_handle_method_call(
     try {
         if(strcmp(method, "setUrl") == 0)
         {
-            const gchar* url = fl_value_get_string(args);
-            printf("%s\n", url);
-            player->setUrl(url);
+            FlValue* val1 = fl_value_lookup_string(args, "url");
+            FlValue* val2 = fl_value_lookup_string(args, "encryptionKey");
+            const char* url = fl_value_get_string(val1);
+            const char* key = nullptr;
+            if(fl_value_get_type(val2) == FL_VALUE_TYPE_STRING)
+            {
+                key = fl_value_get_string(val2);
+            }
+            printf("%s - %p\n", url, key);
+            player->setUrl(url, key);
             response = FL_METHOD_RESPONSE(fl_method_success_response_new(nullptr));
         }
         else if(strcmp(method, "play") == 0)

@@ -64,7 +64,8 @@ class AudioPlayerGst {
   /// Changes volume of audio. Allowed interval: [[0, 1.0]]
   Future<void> setVolume(double volume) => _methodChannel.invokeMethod('setVolume', volume);
   /// Sets audio url
-  Future<void> setUrl(String url) => _methodChannel.invokeMethod('setUrl', url);
+  Future<void> setUrl(String url, [String? encryptionKey]) =>
+      _methodChannel.invokeMethod('setUrl', {'url': url, 'encryptionKey': encryptionKey});
   /// Sets the position currently playing audio
   Future<void> seek(Duration position) => _methodChannel.invokeMethod('seek', position.inMilliseconds);
   /// Changes playing audio speed.

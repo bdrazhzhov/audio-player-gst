@@ -10,15 +10,18 @@ project(${PROJECT_NAME} LANGUAGES CXX)
 # This value is used when generating builds using this plugin, so it must
 # not be changed.
 set(PLUGIN_NAME "audio_player_gst_plugin")
+find_library(GCRYPT_LIBRARY NAMES gcrypt REQUIRED)
 find_package(PkgConfig REQUIRED)
 
 pkg_check_modules(GSTREAMER REQUIRED gstreamer-1.0)
 pkg_check_modules(GST_APP REQUIRED gstreamer-app-1.0)
+pkg_check_modules(SOUP REQUIRED libsoup-3.0)
 
 include_directories(
     ${GST_INCLUDE_DIRS}
     ${GST_APP_INCLUDE_DIRS}
     ${CMAKE_CURRENT_SOURCE_DIR}
+    ${SOUP_INCLUDE_DIRS}
 )
 link_directories(
     ${GST_LIBRARY_DIRS}
@@ -30,6 +33,9 @@ list(APPEND PLUGIN_SOURCES
     audio_player_gst_plugin.cc
     audio_player.cpp
     flutter_event_sender.cpp
+    app-src.cpp
+    y-dec.cpp
+    y-downloader.cpp
 )
 
 # Define the plugin library target. Its name must not be changed (see comment
@@ -54,6 +60,8 @@ target_include_directories(${PLUGIN_NAME} INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/include" ${GST_INCLUDE_DIRS})
 target_link_libraries(${PLUGIN_NAME} PRIVATE flutter PkgConfig::GTK)
 target_link_libraries(${PLUGIN_NAME} PRIVATE ${GST_APP_LIBRARIES})
+target_link_libraries(${PLUGIN_NAME} PRIVATE ${SOUP_LIBRARIES})
+target_link_libraries(${PLUGIN_NAME} PRIVATE ${GCRYPT_LIBRARY})
 
 # List of absolute paths to libraries that should be bundled with the plugin.
 # This list could contain prebuilt libraries, or libraries created by an
