@@ -331,8 +331,8 @@ void AudioPlayer::_onVolumeChanged(GstElement* volumeElement, GParamSpec*, Audio
     }
 
     g_object_get(volumeElement, "volume", &self->_volume, NULL);
-    // self->_sendEvent("audio.volume", self->_volume);
-    std::cout << "Volume changed: " << self->_volume << std::endl;
+    self->_sendEvent("audio.volume", self->_volume);
+//    std::cout << "Volume changed: " << self->_volume << std::endl;
 }
 
 void AudioPlayer::_seek(const gint64 position, const gdouble rate)
