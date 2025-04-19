@@ -53,9 +53,11 @@ void AppSrc::appSourcePush(GstElement*, const guint unusedSize, AppSrc* self)
     gst_buffer_unref(gstBuffer);
 }
 
-void AppSrc::appSourceSeek(GstElement*, const guint64 offset, AppSrc* self)
+gboolean AppSrc::appSourceSeek(GstElement*, const guint64 offset, AppSrc* self)
 {
 //    std::cout << "appSourceSeek: " << offset << std::endl;
 
     self->offset = offset;
+
+    return true;
 }

@@ -22,5 +22,5 @@ public:
 
 private:
     static void appSourcePush(GstElement*, guint unusedSize, AppSrc* self);
-    static void appSourceSeek(GstElement*, guint64 offset, AppSrc* self);
+    static gboolean appSourceSeek(GstElement*, guint64 offset, AppSrc* self);
 };

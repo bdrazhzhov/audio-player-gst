@@ -193,6 +193,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus*, GstMessage* message, AudioPlayer* s
         }
         else if (new_state == GST_STATE_PLAYING && old_state == GST_STATE_PAUSED)
         {
+//            std::cout << "[audio_player_gst]: Requesting seek" << std::endl;
             GstQuery *query = gst_query_new_seeking(GST_FORMAT_TIME);
 
             if(gst_element_query(self->_playbin, query))
@@ -202,6 +203,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus*, GstMessage* message, AudioPlayer* s
             else
             {
                 //g_printerr("[audio_player_gst]: Seeking query failed.\n");
+//                std::cout << "[audio_player_gst]: Seeking query failed." << std::endl;
             }
 
             gst_query_unref(query);
