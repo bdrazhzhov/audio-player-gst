@@ -27,6 +27,7 @@ AudioPlayer::AudioPlayer(FlEventChannel* eventChannel) : _sendEvent(eventChannel
 
     g_object_set(GST_OBJECT(_playbin), "audio-filter", _scaleTempo, NULL);
     g_signal_connect(_playbin, "source-setup", G_CALLBACK(sourceSetup), this);
+    g_object_set(_playbin, "uri", "appsrc://", NULL);
 
     _bus = gst_element_get_bus(_playbin);
     gst_bus_add_watch(_bus, reinterpret_cast<GstBusFunc>(_onBusMessage), this);
@@ -95,17 +96,23 @@ void AudioPlayer::setUrl(const char* urlString, const char* encryptionKey)
     _isUrlSet = false;
     _isDownloaded = false;
 
-    gst_element_set_state(_playbin, GST_STATE_NULL);
+//    std::cout << "[audio_player_gst]: setUrl: " << urlString << std::endl;
+
+    GstStateChangeReturn ret = gst_element_set_state(_playbin, GST_STATE_NULL);
+    if(ret == GST_STATE_CHANGE_FAILURE)
+    {
+        throw AudioPlayerException("setUrl: Unable to set the pipeline to GST_STATE_NULL");
+    }
 
     _appSrc.init(urlString, encryptionKey);
-    g_object_set(_playbin, "uri", "appsrc://", NULL);
+    _position = 0;
 
     if(_playbin->current_state == GST_STATE_READY) return;
 
-    const GstStateChangeReturn ret = gst_element_set_state(_playbin, GST_STATE_READY);
+    ret = gst_element_set_state(_playbin, GST_STATE_READY);
     if(ret == GST_STATE_CHANGE_FAILURE)
     {
-        throw AudioPlayerException("Unable to set the pipeline to GST_STATE_READY");
+        throw AudioPlayerException("setUrl: Unable to set the pipeline to GST_STATE_READY");
     }
 
     _isUrlSet = true;
@@ -215,7 +222,7 @@ gboolean AudioPlayer::_onBusMessage(GstBus*, GstMessage* message, AudioPlayer* s
     }
     case GST_MESSAGE_EOS:
     {
-        // g_print("[audio_player_gst]: Playback finished");
+        // std::cout << "[audio_player_gst]: Playback finished" << std::endl;
         gst_element_set_state(self->_playbin, GST_STATE_NULL);
         self->_sendEvent("audio.completed", true);
 
@@ -300,7 +307,7 @@ gboolean AudioPlayer::_onRefreshTick(AudioPlayer* self)
     {
         if(!gst_element_query_position(self->_playbin, GST_FORMAT_TIME, &self->_position))
         {
-            //g_print("[audio_player_gst]: Could not query current position.");
+//            std::cout << "[audio_player_gst]: Could not query current position." << std::endl;
             return 0;
         }
 

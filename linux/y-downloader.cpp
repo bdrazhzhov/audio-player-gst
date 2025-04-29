@@ -8,22 +8,35 @@
 
 #include <cinttypes>
 #include <iostream>
+#include <mutex>
 #include <libsoup/soup.h>
 
 #define CHUNK_SIZE 4096
 
+std::mutex startMutex;
+
+YDownloader::~YDownloader() {
+    {
+        std::lock_guard<std::mutex> lk(startMutex);
+        isRunning = false;
+    }
+    if (worker && worker->joinable()) worker->join();
+}
+
 void YDownloader::start(const char* url, const char* key)
 {
-    dataOffset = 0;
-    needDecryption = !!key;
-    if (needDecryption) ydec.init(key);
-    _decryptOffset = 0;
+    std::lock_guard<std::mutex> lock(startMutex);
 
     if(worker && worker->joinable())
     {
         isRunning = false;
         worker->join();
     }
+
+    dataOffset = 0;
+    needDecryption = !!key;
+    if (needDecryption) ydec.init(key);
+    _decryptOffset = 0;
 
     isRunning = true;
     std::string urlString(url);

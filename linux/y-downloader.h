@@ -10,6 +10,7 @@
 #include <memory>
 #include <thread>
 #include <vector>
+#include <atomic>
 #include <libsoup/soup.h>
 
 #include "y-dec.h"
@@ -28,9 +29,9 @@ class YDownloader
     uint64_t _decryptOffset = 0;
     YDec ydec;
     std::unique_ptr<std::thread> worker;
-    bool isRunning = false;
+    std::atomic<bool> isRunning{false};
     std::function<void(uint64_t)> sizeCallback;
-    bool needDecryption = false;
+    std::atomic<bool> needDecryption{false};
 
     bool establishConnection(const char* url, ConnectionData& connection) const;
     bool readDataChunk(const char* url, ConnectionData& connection);
@@ -38,6 +39,7 @@ class YDownloader
     void decrypt();
 
 public:
+    ~YDownloader();
     void start(const char* url, const char* key);
     void cancel();
     [[nodiscard]] uint8_t progress() const;
