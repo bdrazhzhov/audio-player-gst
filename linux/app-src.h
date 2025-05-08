@@ -10,8 +10,8 @@
 
 class AppSrc
 {
-    YDownloader downloader;
-    // YDownloader2 downloader;
+    // YDownloader downloader;
+    YDownloader2 downloader;
     uint64_t offset = 0;
     GstAppSrc* source = nullptr;
 
