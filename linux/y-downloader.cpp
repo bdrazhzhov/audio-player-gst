@@ -243,7 +243,7 @@ YDownloader2::~YDownloader2()
 
 void YDownloader2::start(const char* url, const char* key)
 {
-    std::lock_guard lock(startMutex);
+    std::lock_guard<std::mutex> lock(startMutex);
     dataOffset = 0;
     needDecryption = !!key;
     if (needDecryption) yDec.init(key);
