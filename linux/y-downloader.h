@@ -60,7 +60,6 @@ class YDownloader2
     SoupLogger* soupLogger = nullptr;
     SoupMessage* message = nullptr;
     GCancellable* cancellable = nullptr;
-    gssize totalSize = 0;
     std::atomic<bool> needDecryption{false};
     GMainLoop* loop = nullptr;
 

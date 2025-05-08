@@ -24,6 +24,7 @@ void AppSrc::init(const char* url, const char* key)
 
 void AppSrc::sourceSetup(GstElement* source)
 {
+    std::cout << "Source setup" << std::endl;
     this->source = GST_APP_SRC(source);
     g_object_set(G_OBJECT(source),
                  "format", GST_FORMAT_BYTES,
@@ -55,7 +56,7 @@ void AppSrc::appSourcePush(GstElement*, const guint unusedSize, AppSrc* self)
 
 gboolean AppSrc::appSourceSeek(GstElement*, const guint64 offset, AppSrc* self)
 {
-    std::cout << "appSourceSeek: " << offset << std::endl;
+    // std::cout << "appSourceSeek: " << offset << std::endl;
 
     self->offset = offset;
 

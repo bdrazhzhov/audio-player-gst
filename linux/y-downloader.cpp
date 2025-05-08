@@ -64,6 +64,8 @@ bool YDownloader::establishConnection(const char* url, ConnectionData& connectio
             g_object_unref(connection.msg);
             connection.msg = nullptr;
         }
+        if(connection.session) g_object_unref(connection.session);
+
         connection.session = soup_session_new();
         connection.msg = soup_message_new("GET", url);
 
@@ -174,9 +176,9 @@ void YDownloader::processDownload(const char* url)
         else
         {
             std::cerr << "Server error: " << soup_message_get_status(connection.msg) << std::endl;
-            if(connection.stream) g_object_unref(connection.stream);
-            if(connection.msg) g_object_unref(connection.msg);
-            if(connection.session) g_object_unref(connection.session);
+            // if(connection.stream) g_object_unref(connection.stream);
+            // if(connection.msg) g_object_unref(connection.msg);
+            // if(connection.session) g_object_unref(connection.session);
             isRunning = false;
             return;
         }
@@ -187,9 +189,9 @@ void YDownloader::processDownload(const char* url)
         if(!readDataChunk(url, connection)) break;
     }
 
-    if(connection.stream) g_object_unref(connection.stream);
-    if(connection.msg) g_object_unref(connection.msg);
-    if(connection.session) g_object_unref(connection.session);
+    // if(connection.stream) g_object_unref(connection.stream);
+    // if(connection.msg) g_object_unref(connection.msg);
+    // if(connection.session) g_object_unref(connection.session);
     isRunning = false;
 }
 
@@ -247,7 +249,10 @@ void YDownloader2::start(const char* url, const char* key)
     if (needDecryption) yDec.init(key);
     _decryptOffset = 0;
 
-    g_main_loop_unref(loop);
+    if(loop)
+    {
+        g_main_loop_unref(loop);
+    }
     loop = g_main_loop_new(nullptr, FALSE);
 
     g_clear_object(&cancellable);
@@ -272,7 +277,7 @@ void YDownloader2::onHeaders(SoupMessage* msg, YDownloader2* self)
 
         if(self->sizeCallback) self->sizeCallback(contentLength);
 
-        std::cout << "Total size: " << self->totalSize << " bytes" << std::endl;
+        std::cout << "Total size: " << contentLength << " bytes" << std::endl;
     }
     else
     {
@@ -331,19 +336,10 @@ void YDownloader2::onResponse(GObject *, GAsyncResult *res, gpointer user_data)
 
         if (readBytes > 0)
         {
-            if(self->totalSize > 0)
-            {
-                const auto percent = static_cast<uint8_t>(static_cast<double>(self->dataOffset) / self->totalSize * 100);
-                std::cout << "Downloaded " << self->dataOffset << "/" << self->totalSize
-                    << " (" << percent << "% )" << std::endl;
-            }
-            else
-            {
-                std::cout << "Downloaded " << self->dataOffset << " bytes" << std::endl;
-            }
-
             self->dataOffset += readBytes;
             self->decrypt();
+
+            // std::cout << "Downloaded " << self->dataOffset << " bytes" << std::endl;
 
             if(self->cancellable && g_cancellable_is_cancelled(self->cancellable))
             {
