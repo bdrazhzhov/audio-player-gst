@@ -17,7 +17,7 @@ std::mutex startMutex;
 
 YDownloader::~YDownloader() {
     {
-        std::lock_guard<std::mutex> lk(startMutex);
+        std::lock_guard lk(startMutex);
         isRunning = false;
     }
     if (worker && worker->joinable()) worker->join();
@@ -25,7 +25,7 @@ YDownloader::~YDownloader() {
 
 void YDownloader::start(const char* url, const char* key)
 {
-    std::lock_guard<std::mutex> lock(startMutex);
+    std::lock_guard lock(startMutex);
 
     if(worker && worker->joinable())
     {
@@ -78,10 +78,10 @@ bool YDownloader::establishConnection(const char* url, ConnectionData& connectio
         connection.stream = soup_session_send(connection.session, connection.msg, nullptr, &error);
         if(error || !connection.stream)
         {
-            std::cerr << "Connection error (retry " << connAttempts + 1
+			connAttempts++;
+            std::cerr << "Connection error (retry " << connAttempts
                 << "): " << (error ? error->message : "unknown error") << std::endl;
             g_clear_error(&error);
-            connAttempts++;
             std::this_thread::sleep_for(std::chrono::seconds(retryDelaySeconds));
         }
         else
@@ -99,17 +99,15 @@ bool YDownloader::readDataChunk(const char* url, ConnectionData& connection)
     constexpr int retryDelaySeconds = 2;
     int readAttempts = 0;
     GError* error = nullptr;
-    gssize readBytes = -1;
 
     while(readAttempts < maxReadAttempts)
     {
-        readBytes = g_input_stream_read(connection.stream, buffer.data() + dataOffset, CHUNK_SIZE, nullptr, &error);
+        const gssize readBytes = g_input_stream_read(connection.stream, buffer.data() + dataOffset, CHUNK_SIZE, nullptr, &error);
         if(error)
         {
-            std::cerr << "Read error (retry " << readAttempts + 1 << "): "
-                << error->message << std::endl;
+			readAttempts++;
+            std::cerr << "Read error (retry " << readAttempts << "): " << error->message << std::endl;
             g_clear_error(&error);
-            readAttempts++;
 
             if(readAttempts < maxReadAttempts)
             {
@@ -225,4 +223,170 @@ uint8_t YDownloader::progress() const
     if(_decryptOffset == buffer.size()) return 100.f;
 
     return 100 * _decryptOffset / buffer.size();
+}
+//============================================
+YDownloader2::YDownloader2()
+{
+    session = soup_session_new();
+    soupLogger = soup_logger_new(SOUP_LOGGER_LOG_HEADERS);
+    soup_session_add_feature(session, SOUP_SESSION_FEATURE(soupLogger));
+}
+
+YDownloader2::~YDownloader2()
+{
+    g_clear_object(&session);
+    g_clear_object(&cancellable);
+    g_clear_object(&loop);
+}
+
+void YDownloader2::start(const char* url, const char* key)
+{
+    std::lock_guard lock(startMutex);
+    dataOffset = 0;
+    needDecryption = !!key;
+    if (needDecryption) yDec.init(key);
+    _decryptOffset = 0;
+
+    g_main_loop_unref(loop);
+    loop = g_main_loop_new(nullptr, FALSE);
+
+    g_clear_object(&cancellable);
+    cancellable = g_cancellable_new();
+
+    message = soup_message_new(SOUP_METHOD_GET, url);
+    g_signal_connect(message, "got-headers", G_CALLBACK(onHeaders), this);
+    soup_session_send_async(session, message, G_PRIORITY_DEFAULT, cancellable, onResponse, this);
+
+    g_main_loop_run(loop);
+}
+
+void YDownloader2::onHeaders(SoupMessage* msg, YDownloader2* self)
+{
+    std::cout << "On headers" << std::endl;
+
+    if(SOUP_STATUS_IS_SUCCESSFUL(soup_message_get_status(msg)))
+    {
+        SoupMessageHeaders* headers = soup_message_get_response_headers(msg);
+        const goffset contentLength = soup_message_headers_get_content_length(headers);
+        self->buffer.resize(contentLength);
+
+        if(self->sizeCallback) self->sizeCallback(contentLength);
+
+        std::cout << "Total size: " << self->totalSize << " bytes" << std::endl;
+    }
+    else
+    {
+        std::cerr << "Server error: " << soup_message_get_status(msg) << std::endl;
+        if(msg) g_object_unref(msg);
+    }
+}
+
+void YDownloader2::onResponse(GObject *, GAsyncResult *res, gpointer user_data)
+{
+    std::cout << "On response" << std::endl;
+
+    auto* self = static_cast<YDownloader2*>(user_data);
+    GError *error = nullptr;
+    GInputStream *in = soup_session_send_finish(self->session, res, &error);
+
+    if(error)
+    {
+        if(g_error_matches(error, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+        {
+            std::cerr << "Download cancelled" << std::endl;
+        }
+        else
+        {
+            std::cerr << "Download failed: " << error->message << std::endl;
+        }
+
+        g_error_free(error);
+        g_clear_object(&self->loop);
+
+        return;
+    }
+
+    while (true)
+    {
+        gsize readBytes = 0;
+        GError* readErr = nullptr;
+        void* buffer = self->buffer.data() + self->dataOffset;
+
+        g_input_stream_read_all(in, buffer, CHUNK_SIZE, &readBytes, self->cancellable, &readErr);
+
+        if(readErr)
+        {
+            if(g_error_matches(readErr, G_IO_ERROR, G_IO_ERROR_CANCELLED))
+            {
+                std::cerr << "Cancelled during download" << std::endl;
+            }
+            else
+            {
+                std::cerr << "Read error: " << readErr->message << std::endl;
+            }
+
+            g_error_free(readErr);
+            break;
+        }
+
+        if (readBytes > 0)
+        {
+            if(self->totalSize > 0)
+            {
+                const auto percent = static_cast<uint8_t>(static_cast<double>(self->dataOffset) / self->totalSize * 100);
+                std::cout << "Downloaded " << self->dataOffset << "/" << self->totalSize
+                    << " (" << percent << "% )" << std::endl;
+            }
+            else
+            {
+                std::cout << "Downloaded " << self->dataOffset << " bytes" << std::endl;
+            }
+
+            self->dataOffset += readBytes;
+            self->decrypt();
+
+            if(self->cancellable && g_cancellable_is_cancelled(self->cancellable))
+            {
+                std::cerr << "Cancelled during download" << std::endl;
+                break;
+            }
+        }
+    }
+
+    g_input_stream_close(in, nullptr, nullptr);
+    std::cout << "Download completed." << std::endl;
+    g_clear_object(&self->loop);
+}
+
+void YDownloader2::decrypt()
+{
+    if(!needDecryption)
+    {
+        _decryptOffset = dataOffset;
+        return;
+    }
+
+    uint64_t dataSize = dataOffset - _decryptOffset;
+    if(dataOffset < buffer.size())
+    {
+        const uint8_t sizeCorrection = dataSize % 16;
+        if(sizeCorrection > 0) dataSize -= sizeCorrection;
+    }
+
+    yDec.decrypt(buffer.data() + _decryptOffset, dataSize);
+    _decryptOffset += dataSize;
+}
+
+uint8_t YDownloader2::progress() const
+{
+    if(_decryptOffset == 0) return 0.f;
+    if(_decryptOffset == buffer.size()) return 100.f;
+
+    return 100 * _decryptOffset / buffer.size();
+}
+
+void YDownloader2::cancel()
+{
+    std::cout << "Cancellation requested" << std::endl;
+    g_cancellable_cancel(cancellable);
 }

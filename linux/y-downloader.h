@@ -48,3 +48,37 @@ public:
     [[nodiscard]] uint64_t decryptOffset() const { return _decryptOffset; }
     void gotSizeCallback(const std::function<void(uint64_t)>& callback) { sizeCallback = callback; }
 };
+
+class YDownloader2
+{
+    std::vector<uint8_t> buffer;
+    uint64_t dataOffset = 0;
+    uint64_t _decryptOffset = 0;
+    YDec yDec;
+    std::function<void(uint64_t)> sizeCallback;
+    SoupSession* session = nullptr;
+    SoupLogger* soupLogger = nullptr;
+    SoupMessage* message = nullptr;
+    GCancellable* cancellable = nullptr;
+    gssize totalSize = 0;
+    std::atomic<bool> needDecryption{false};
+    GMainLoop* loop = nullptr;
+
+    static void onHeaders(SoupMessage* msg, YDownloader2* self);
+    static void onResponse(GObject *, GAsyncResult *res, gpointer user_data);
+    // bool establishConnection(const char* url, ConnectionData& connection) const;
+    // bool readDataChunk(const char* url, ConnectionData& connection);
+    // void processDownload(const char* url);
+    void decrypt();
+
+public:
+    YDownloader2();
+    ~YDownloader2();
+    void start(const char* url, const char* key);
+    void cancel();
+    [[nodiscard]] uint8_t progress() const;
+    [[nodiscard]] const uint8_t* data() const { return buffer.data(); }
+    [[nodiscard]] uint64_t dataSize() const { return buffer.size(); }
+    [[nodiscard]] uint64_t decryptOffset() const { return _decryptOffset; }
+    void gotSizeCallback(const std::function<void(uint64_t)>& callback) { sizeCallback = callback; }
+};
