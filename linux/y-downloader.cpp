@@ -17,7 +17,7 @@ std::mutex startMutex;
 
 YDownloader::~YDownloader() {
     {
-        std::lock_guard lk(startMutex);
+        std::lock_guard<std::mutex> lk(startMutex);
         isRunning = false;
     }
     if (worker && worker->joinable()) worker->join();
@@ -25,7 +25,7 @@ YDownloader::~YDownloader() {
 
 void YDownloader::start(const char* url, const char* key)
 {
-    std::lock_guard lock(startMutex);
+    std::lock_guard<std::mutex> lock(startMutex);
 
     if(worker && worker->joinable())
     {
