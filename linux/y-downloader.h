@@ -25,8 +25,9 @@ struct ConnectionData
 class YDownloader
 {
     std::vector<uint8_t> buffer;
-    uint64_t dataOffset = 0;
-    uint64_t _decryptOffset = 0;
+    std::atomic<uint64_t> dataOffset{0};
+    std::atomic<uint64_t> _decryptOffset{0};
+    std::atomic<uint64_t> totalSize{0};
     YDec ydec;
     std::unique_ptr<std::thread> worker;
     std::atomic<bool> isRunning{false};
@@ -44,7 +45,8 @@ public:
     void cancel();
     [[nodiscard]] uint8_t progress() const;
     [[nodiscard]] const uint8_t* data() const { return buffer.data(); }
-    [[nodiscard]] uint64_t dataSize() const { return buffer.size(); }
-    [[nodiscard]] uint64_t decryptOffset() const { return _decryptOffset; }
+    [[nodiscard]] uint64_t dataSize() const { return totalSize.load(std::memory_order_relaxed); }
+    [[nodiscard]] uint64_t decryptOffset() const { return _decryptOffset.load(std::memory_order_acquire); }
+    [[nodiscard]] bool running() const { return isRunning.load(std::memory_order_acquire); }
     void gotSizeCallback(const std::function<void(uint64_t)>& callback) { sizeCallback = callback; }
 };

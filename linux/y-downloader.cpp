@@ -33,10 +33,11 @@ void YDownloader::start(const char* url, const char* key)
         worker->join();
     }
 
-    dataOffset = 0;
+    dataOffset.store(0, std::memory_order_release);
     needDecryption = !!key;
     if (needDecryption) ydec.init(key);
-    _decryptOffset = 0;
+    _decryptOffset.store(0, std::memory_order_release);
+    totalSize.store(0, std::memory_order_release);
 
     isRunning = true;
     std::string urlString(url);
@@ -67,10 +68,11 @@ bool YDownloader::establishConnection(const char* url, ConnectionData& connectio
         connection.session = soup_session_new();
         connection.msg = soup_message_new("GET", url);
 
-        if(dataOffset > 0)
+        const uint64_t currentOffset = dataOffset.load(std::memory_order_acquire);
+        if(currentOffset > 0)
         {
             char range[64];
-            snprintf(range, sizeof(range), "bytes=%lu-", dataOffset);
+            snprintf(range, sizeof(range), "bytes=%lu-", currentOffset);
             soup_message_headers_append(soup_message_get_request_headers(connection.msg), "Range", range);
         }
 
@@ -99,11 +101,11 @@ bool YDownloader::readDataChunk(const char* url, ConnectionData& connection)
     constexpr int retryDelaySeconds = 2;
     int readAttempts = 0;
     GError* error = nullptr;
-    gssize readBytes = -1;
 
     while(readAttempts < maxReadAttempts)
     {
-        readBytes = g_input_stream_read(connection.stream, buffer.data() + dataOffset, CHUNK_SIZE, nullptr, &error);
+        const uint64_t currentOffset = dataOffset.load(std::memory_order_acquire);
+        gssize readBytes = g_input_stream_read(connection.stream, buffer.data() + currentOffset, CHUNK_SIZE, nullptr, &error);
         if(error)
         {
             std::cerr << "Read error (retry " << readAttempts + 1 << "): "
@@ -144,7 +146,7 @@ bool YDownloader::readDataChunk(const char* url, ConnectionData& connection)
                 return false;
             }
 
-            dataOffset += readBytes;
+            dataOffset.fetch_add(readBytes, std::memory_order_acq_rel);
             decrypt();
             return true;
         }
@@ -170,6 +172,7 @@ void YDownloader::processDownload(const char* url)
             SoupMessageHeaders* response_headers = soup_message_get_response_headers(connection.msg);
             const goffset contentLength = soup_message_headers_get_content_length(response_headers);
             buffer.resize(contentLength);
+            totalSize.store(contentLength, std::memory_order_release);
             if(sizeCallback)
                 sizeCallback(contentLength);
         }
@@ -184,7 +187,7 @@ void YDownloader::processDownload(const char* url)
         }
     }
 
-    while(isRunning && dataOffset < buffer.size())
+    while(isRunning && dataOffset.load(std::memory_order_acquire) < totalSize.load(std::memory_order_acquire))
     {
         if(!readDataChunk(url, connection)) break;
     }
@@ -199,19 +202,21 @@ void YDownloader::decrypt()
 {
     if(!needDecryption)
     {
-        _decryptOffset = dataOffset;
+        _decryptOffset.store(dataOffset.load(std::memory_order_acquire), std::memory_order_release);
         return;
     }
 
-    uint64_t dataSize = dataOffset - _decryptOffset;
-    if(dataOffset < buffer.size())
+    const uint64_t currentDataOffset = dataOffset.load(std::memory_order_acquire);
+    uint64_t decryptOffset = _decryptOffset.load(std::memory_order_acquire);
+    uint64_t dataSize = currentDataOffset - decryptOffset;
+    if(currentDataOffset < totalSize.load(std::memory_order_acquire))
     {
         const uint8_t sizeCorrection = dataSize % 16;
         if(sizeCorrection > 0) dataSize -= sizeCorrection;
     }
 
-    ydec.decrypt(buffer.data() + _decryptOffset, dataSize);
-    _decryptOffset += dataSize;
+    ydec.decrypt(buffer.data() + decryptOffset, dataSize);
+    _decryptOffset.store(decryptOffset + dataSize, std::memory_order_release);
 }
 
 void YDownloader::cancel()
@@ -221,8 +226,10 @@ void YDownloader::cancel()
 
 uint8_t YDownloader::progress() const
 {
-    if(_decryptOffset == 0) return 0.f;
-    if(_decryptOffset == buffer.size()) return 100.f;
+    const uint64_t decryptOffset = _decryptOffset.load(std::memory_order_acquire);
+    const uint64_t size = totalSize.load(std::memory_order_acquire);
+    if(size == 0 || decryptOffset == 0) return 0.f;
+    if(decryptOffset >= size) return 100.f;
 
-    return 100 * _decryptOffset / buffer.size();
+    return 100 * decryptOffset / size;
 }
