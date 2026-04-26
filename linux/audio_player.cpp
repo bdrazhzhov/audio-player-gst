@@ -12,7 +12,7 @@
 #define GST_PLAY_FLAG_DOWNLOAD (1 << 7)
 #define g_print(format, ...)
 
-AudioPlayer::AudioPlayer(FlEventChannel* eventChannel) : _sendEvent(eventChannel)
+AudioPlayer::AudioPlayer(FlutterEventSender& eventSender) : _sendEvent(eventSender)
 {
     gst_init(nullptr, nullptr);
 

@@ -12,7 +12,7 @@
 
 class AudioPlayer
 {
-    FlutterEventSender _sendEvent;
+    FlutterEventSender& _sendEvent;
     GstElement* _playbin = nullptr;
     GstElement* _scaleTempo = nullptr;
     GstBus* _bus = nullptr;
@@ -33,7 +33,7 @@ class AudioPlayer
     static void sourceSetup(GstElement* pipeline, GstElement* source, AudioPlayer* self);
 
 public:
-    explicit AudioPlayer(FlEventChannel* eventChannel);
+    explicit AudioPlayer(FlutterEventSender& eventSender);
     ~AudioPlayer();
 
     void play();
@@ -44,5 +44,4 @@ public:
     void setRate(double rate);
     [[nodiscard]] gint64 duration() const;
 };
-
 

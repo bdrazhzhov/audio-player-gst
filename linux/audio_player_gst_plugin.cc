@@ -20,7 +20,8 @@ struct _AudioPlayerGstPlugin
     GObject parent_instance;
 };
 
-AudioPlayer* player;
+AudioPlayer* player = nullptr;
+FlutterEventSender* sendEvent = nullptr;
 
 G_DEFINE_TYPE(AudioPlayerGstPlugin, audio_player_gst_plugin, g_object_get_type())
 
@@ -107,6 +108,7 @@ static void audio_player_gst_plugin_dispose(GObject* object)
 static void audio_player_gst_plugin_class_init(AudioPlayerGstPluginClass* klass)
 {
     delete player;
+    delete sendEvent;
     G_OBJECT_CLASS(klass)->dispose = audio_player_gst_plugin_dispose;
 }
 
@@ -118,7 +120,14 @@ static void audio_player_gst_plugin_init(AudioPlayerGstPlugin* self)
     auto eventChannel = fl_event_channel_new(binaryMessenger,
                                              "audio_player_gst/events",
                                              FL_METHOD_CODEC(eventCodec));
-    player = new AudioPlayer(eventChannel);
+    GMainContext* platformContext = g_main_context_get_thread_default();
+    if(!platformContext)
+    {
+        platformContext = g_main_context_default();
+    }
+
+    sendEvent = new FlutterEventSender(eventChannel, platformContext);
+    player = new AudioPlayer(*sendEvent);
 }
 
 static void method_call_cb(FlMethodChannel* /*channel*/, FlMethodCall* method_call,

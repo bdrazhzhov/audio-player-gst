@@ -9,11 +9,17 @@
 class FlutterEventSender
 {
     FlEventChannel* _eventChannel;
+    GMainContext* _platformContext;
 
     void _send(const char* eventName, const std::function<void (const FlValue_autoptr&)>& dataFunc);
+    static gboolean _sendTask(gpointer userData);
+    static void _destroySendTask(gpointer userData);
 
 public:
-    explicit FlutterEventSender(FlEventChannel* eventChannel) : _eventChannel(eventChannel) {}
+    explicit FlutterEventSender(FlEventChannel* eventChannel, GMainContext* platformContext);
+    ~FlutterEventSender();
+    FlutterEventSender(const FlutterEventSender&) = delete;
+    FlutterEventSender& operator=(const FlutterEventSender&) = delete;
 
     void operator()(const char* eventName, const char* data);
     void operator()(const char* eventName, const std::string& data);
