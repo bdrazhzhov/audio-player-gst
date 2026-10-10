@@ -1,11 +1,6 @@
-import 'package:equatable/equatable.dart';
+sealed class EventBase {}
 
-sealed class EventBase extends Equatable {}
-
-class UnknownEvent extends EventBase {
-  @override
-  List<Object?> get props => [];
-}
+class UnknownEvent extends EventBase {}
 
 class DurationEvent extends EventBase {
   final Duration duration;
@@ -13,17 +8,26 @@ class DurationEvent extends EventBase {
   DurationEvent(this.duration);
 
   @override
-  List<Object> get props => [duration];
+  bool operator ==(Object other) =>
+      identical(this, other) || other is DurationEvent && duration == other.duration;
+
+  @override
+  int get hashCode => duration.hashCode;
 }
 
 enum PlayingState { pending, idle, ready, playing, paused, completed, unknown }
+
 class PlayingStateEvent extends EventBase {
   final PlayingState state;
 
   PlayingStateEvent(this.state);
 
   @override
-  List<Object> get props => [state];
+  bool operator ==(Object other) =>
+      identical(this, other) || other is PlayingStateEvent && state == other.state;
+
+  @override
+  int get hashCode => state.hashCode;
 }
 
 class PositionEvent extends EventBase {
@@ -32,7 +36,11 @@ class PositionEvent extends EventBase {
   PositionEvent(this.position);
 
   @override
-  List<Object?> get props => [position];
+  bool operator ==(Object other) =>
+      identical(this, other) || other is PositionEvent && position == other.position;
+
+  @override
+  int get hashCode => position.hashCode;
 }
 
 class BufferingEvent extends EventBase {
@@ -41,7 +49,11 @@ class BufferingEvent extends EventBase {
   BufferingEvent(this.percent);
 
   @override
-  List<Object?> get props => [percent];
+  bool operator ==(Object other) =>
+      identical(this, other) || other is BufferingEvent && percent == other.percent;
+
+  @override
+  int get hashCode => percent.hashCode;
 }
 
 class VolumeEvent extends EventBase {
@@ -50,5 +62,9 @@ class VolumeEvent extends EventBase {
   VolumeEvent(this.value);
 
   @override
-  List<Object?> get props => [value];
+  bool operator ==(Object other) =>
+      identical(this, other) || other is VolumeEvent && value == other.value;
+
+  @override
+  int get hashCode => value.hashCode;
 }
