@@ -1,4 +1,3 @@
-
 import 'package:flutter/services.dart';
 
 import 'events.dart';
@@ -14,26 +13,12 @@ class AudioPlayerGst {
 
   final _eventChannel = const EventChannel('audio_player_gst/events');
   final _methodChannel = const MethodChannel('audio_player_gst');
+  late final Stream<EventBase> _stream;
 
-  /// Stream containing events of the player state changes
-  ///
-  /// List of event types:
-  /// - [PlayingStateEvent] contains player state. Available states:
-  ///   - [pending]
-  ///   - [idle] - initial state
-  ///   - [ready] - player is ready to be paused
-  ///   - [paused] - player is paused and not playing now
-  ///   - [playing] - player is playing specified media
-  /// - [DurationEvent] currently playing audio length is in [duration] field of the event
-  /// - [PositionEvent] currently playing audio position is in [position] field of the event
-  /// - [BufferingEvent] occurs when audio is being downloaded from network until it's fully finished.
-  /// [percent] contains amount of downloaded data
-  /// - [PlayingCompletedEvent] occurs when the end of file is reached
-  /// - [VolumeEvent] currently playing audio volume is in [value] field of the event
-  Stream<EventBase> eventsStream() {
-    return _eventChannel.receiveBroadcastStream().map((dynamic event) {
+  AudioPlayerGst() {
+    _stream = _eventChannel.receiveBroadcastStream().map((dynamic event) {
       final map = event as Map<Object?, Object?>;
-      switch(map['event']) {
+      switch (map['event']) {
         case 'audio.playingState':
           final value = map['value'] as String;
           return PlayingStateEvent(_playingStates[value] ?? PlayingState.unknown);
@@ -57,17 +42,40 @@ class AudioPlayerGst {
     }).distinct();
   }
 
+  /// Stream containing events of the player state changes
+  ///
+  /// List of event types:
+  /// - [PlayingStateEvent] contains player state. Available states:
+  ///   - [pending]
+  ///   - [idle] - initial state
+  ///   - [ready] - player is ready to be paused
+  ///   - [paused] - player is paused and not playing now
+  ///   - [playing] - player is playing specified media
+  /// - [DurationEvent] currently playing audio length is in [duration] field of the event
+  /// - [PositionEvent] currently playing audio position is in [position] field of the event
+  /// - [BufferingEvent] occurs when audio is being downloaded from network until it's fully finished.
+  /// [percent] contains amount of downloaded data
+  /// - [PlayingCompletedEvent] occurs when the end of file is reached
+  /// - [VolumeEvent] currently playing audio volume is in [value] field of the event
+  Stream<EventBase> get eventsStream => _stream;
+
   /// Starts playing
   Future<void> play() => _methodChannel.invokeMethod('play');
+
   /// Pauses currently playing audio
   Future<void> pause() => _methodChannel.invokeMethod('pause');
+
   /// Changes volume of audio. Allowed interval: [[0, 1.0]]
   Future<void> setVolume(double volume) => _methodChannel.invokeMethod('setVolume', volume);
+
   /// Sets audio url
   Future<void> setUrl(String url, [String? encryptionKey]) =>
       _methodChannel.invokeMethod('setUrl', {'url': url, 'encryptionKey': encryptionKey});
+
   /// Sets the position currently playing audio
-  Future<void> seek(Duration position) => _methodChannel.invokeMethod('seek', position.inMilliseconds);
+  Future<void> seek(Duration position) =>
+      _methodChannel.invokeMethod('seek', position.inMilliseconds);
+
   /// Changes playing audio speed.
   ///  - Default: 1.0
   ///  - Double speed: 2.0
